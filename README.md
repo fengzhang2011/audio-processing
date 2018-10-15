@@ -2,6 +2,8 @@
 
 A handy nodejs package for audio processing. For example, it can extract frequencies from the audio and compute the pitch.
 
+The source code can be found on [https://github.com/fengzhang2011/audio-processing](feng_a://github.com/fengzhang2011/audio-processing).
+
 ## 1. HOW TO USE
 
 ### 1.1 A simple test on the library
