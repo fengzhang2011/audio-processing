@@ -10,4 +10,4 @@
  * 
  ************************************************/
 
-module.exports = require('./feng_ap');
+module.exports = require('./build/Release/feng_ap');

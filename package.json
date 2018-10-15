@@ -1,0 +1,31 @@
+{
+  "name": "audio-processing",
+  "version": "1.0.1",
+  "description": "Audio processing, such as pitch detection, fft, and etc.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [ "lib", "include", "src", "test.js", "test.sh", "CMakeLists.txt", "compile.sh", "binding.gyp"],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fengzhang2011/audio-processing.git"
+  },
+  "keywords": [
+    "audio",
+    "processing",
+    "pitch",
+    "fft"
+  ],
+  "author": "Feng Zhang",
+  "license": "MIT",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/fengzhang2011/audio-processing/issues"
+  },
+  "homepage": "https://github.com/fengzhang2011/audio-processing#readme"
+}
