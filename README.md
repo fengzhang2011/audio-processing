@@ -16,6 +16,47 @@ $ ./audio_processing
 
 ### 1.2 Use it in the Javascript.
 
+This package has been published into the npm repository. Therefore, it becomes very easy to use this code.
+```bash
+$ mkdir your_project
+$ cd your_project
+$ npm init
+$ npm install audio-processing
+```
+
+Now you could use the code. The example code is as follows.
+
+```javascript
+const ap = require('audio-processing');
+
+console.log(ap.hello());
+
+async function test() {
+let audio = await ap.readAudio("./wav/female.wav");
+  console.log(audio.samplerate);
+  ap.saveAudio("haha.wav", audio.wavdataL, audio.wavdataR, audio.samplerate, audio.bitdepth, audio.channels);
+  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'acorr'));
+  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'yin'));
+  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'mpm'));
+  // console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'goertzel'));
+  // console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'dft'));
+
+  let ampfreq = await ap.ampfreq(audio.wavdataL, audio.samplerate);
+  // console.log('ampfreq=', ampfreq);
+
+  let data = new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+  // console.log(data);
+
+  let freq_data = await ap.fft(data);
+  // console.log(freq_data);
+
+  let td_data = await ap.ifft(freq_data.real, freq_data.imag);
+  // console.log(td_data);
+}
+
+test();
+```
+
 ## 2. CREDITS
 
 This code uses the [FFTS](https://github.com/anthonix/ffts.git), [Pitch-Detection](https://github.com/sevagh/pitch-detection.git), and [AudioFile](https://github.com/adamstark/AudioFile).
