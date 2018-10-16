@@ -26,7 +26,16 @@ $ npm init
 $ npm install audio-processing
 ```
 
-Now you could use the code. The example code is as follows.
+NOTE:
+
+If you encounter some issues like ```permission denied``` while installing it, especially in a docker container, try the following command.
+
+```bash
+# npm config set unsafe-perm true
+```
+Reason: The ```unsafe-perm``` boolean set to true to suppress the UID/GID switching when running package scripts.
+
+Nhow you could use the code. The example code is as follows.
 
 ```javascript
 const ap = require('audio-processing');
