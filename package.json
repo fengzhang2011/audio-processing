@@ -2,7 +2,7 @@
   "name": "audio-processing",
   "version": "1.0.2",
   "description": "Audio processing, such as pitch detection, fft, and etc.",
-  "main": "index.js",
+  "main": "main.js",
   "directories": {
     "lib": "lib"
   },

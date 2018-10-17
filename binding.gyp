@@ -14,7 +14,9 @@
         "src/napi_audiofile.cpp",
         "src/napi_ampfreq.cpp",
         "src/napi_pitch.cpp",
-        "src/napi_fft.cpp"
+        "src/napi_fft.cpp",
+        "src/napi_mfcc.cpp",
+        "src/mfcc.cpp"
       ],
       "include_dirs": [
         "./include"

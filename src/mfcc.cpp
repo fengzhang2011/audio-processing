@@ -10,7 +10,6 @@
  * 
  ************************************************/
 
-#include <cmath>
 #include <complex>
 #include <cstring>
 #include <vector>
@@ -20,7 +19,7 @@
 
 #include "mfcc.h"
 
-MFCC::MFCC(int frameLength, int sampleRate, int nbFilters, double lowerBound, double upperBound, double preEmphFactor)
+MFCC::MFCC(int frameLength, int sampleRate, int nbFilters, float lowerBound, float upperBound, float preEmphFactor)
 {
   // Initialize
   m_hammingCoeff = initHammingCoeff(frameLength);
@@ -34,6 +33,9 @@ MFCC::MFCC(int frameLength, int sampleRate, int nbFilters, double lowerBound, do
 
   m_melBankFeatures.reserve(m_nbFilters);
   m_MFCCs.reserve(m_nbFilters);
+
+  m_melBankFeatureArray = NULL;
+  m_mfccArray = NULL;
 }
 
 MFCC::~MFCC()
@@ -61,12 +63,24 @@ void MFCC::finalize()
     delete [] m_melCoeff;
     m_melCoeff = NULL;
   }
+
+  if(m_melBankFeatureArray)
+  {
+    delete [] m_melBankFeatureArray;
+    m_melBankFeatureArray = NULL;
+  }
+
+  if(m_mfccArray)
+  {
+    delete []m_mfccArray;
+    m_mfccArray = NULL;
+  }
 }
 
 // Initialize the Hamming Window with the frame length.
-double* MFCC::initHammingCoeff(int frameLength)
+float* MFCC::initHammingCoeff(int frameLength)
 {
-  double* hammingCoeff = new double [ frameLength ];
+  float* hammingCoeff = new float [ frameLength ];
 
   for(int i=0; i<frameLength; i++) 
   {
@@ -78,9 +92,9 @@ double* MFCC::initHammingCoeff(int frameLength)
 }
 
 // Initialize the DCT coefficients with the number of filters.
-double* MFCC::initDctCoeff(int nbFilters)
+float* MFCC::initDctCoeff(int nbFilters)
 {
-  double* dctCoeff = new double [ nbFilters * nbFilters ];
+  float* dctCoeff = new float [ nbFilters * nbFilters ];
 
   for(int k=0; k<nbFilters; k++)
   {
@@ -94,28 +108,28 @@ double* MFCC::initDctCoeff(int nbFilters)
 }
 
 // Initialize the Mel coefficients with the frequency boundaries, the number of filters, the number of FFT-size, and the sample rate.
-double* MFCC::initMelFilters(int nbFilters, double lowerBound, double upperBound, int sampleRate, int fftSize)
+float* MFCC::initMelFilters(int nbFilters, float lowerBound, float upperBound, int sampleRate, int fftSize)
 {
   // Frequency bins from 0 (DC), 1 to fftSize/2 (the first half. The second half is the mirroring part of the first part).
   // Therefore, we only get the DC + the non-duplicated frequency bins.
   int nbFreqBins = fftSize / 2 + 1;
 
-  double* melCoeff = new double [ nbFilters * nbFreqBins ];
-  memset( melCoeff, 0.0, nbFilters * nbFreqBins * sizeof(double) );
+  float* melCoeff = new float [ nbFilters * nbFreqBins ];
+  memset( melCoeff, 0.0, nbFilters * nbFreqBins * sizeof(float) );
 
   // Convert the frequency from Hz to Mel-frequency.
-  double lbMelFreq = hz2Mel(lowerBound);
-  double upMelFreq = hz2Mel(upperBound);
+  float lbMelFreq = hz2Mel(lowerBound);
+  float upMelFreq = hz2Mel(upperBound);
 
   // Create the centering bins for each Mel-filter.
   int* freqBins = new int [ nbFilters + 2 ]; // +2 to add the two boundaries: lowest and greatest.
   {
     // Evenly created the bins in the Mel-frequency.
-    double step = ( upMelFreq - lbMelFreq ) / ( nbFilters + 1 );
+    float step = ( upMelFreq - lbMelFreq ) / ( nbFilters + 1 );
 
     for(int i=0; i<nbFilters+2; i++)
     {
-      double freqMelCenter = mel2Hz( lbMelFreq + step * i );
+      float freqMelCenter = mel2Hz( lbMelFreq + step * i );
 
       freqBins[i] = floor( ( fftSize + 1 ) * freqMelCenter / sampleRate );
     }
@@ -143,17 +157,37 @@ double* MFCC::initMelFilters(int nbFilters, double lowerBound, double upperBound
 
 int MFCC::sizeForFFT(int frameLength, int fftSize)
 {
-  if( frameLength>0 && frameLength<fftSize )
+  if( frameLength<0 )
+  {
+    return -1;
+  }
+
+  if( frameLength<fftSize )
   {
     return fftSize;
   }
+
+  int newFFTSize = fftSize;
+  for(int i=0; i<10; i++)
+  {
+    if( frameLength > newFFTSize )
+    {
+      newFFTSize *= 2;
+    }
+    else
+    {
+      break;
+    }
+  } 
+
+  return newFFTSize;
 }
 
-double* MFCC::expandSignal(double* signal, int frameLength, int newSizeForFFT)
+float* MFCC::expandSignal(float* signal, int frameLength, int newSizeForFFT)
 {
-  double* expandedSignal = new double[ newSizeForFFT ];
+  float* expandedSignal = new float[ newSizeForFFT ];
 
-  memset(expandedSignal, 0.0, newSizeForFFT * sizeof(double) );
+  memset(expandedSignal, 0.0, newSizeForFFT * sizeof(float) );
 
   for(int i=0; i<frameLength; i++)
   {
@@ -164,13 +198,13 @@ double* MFCC::expandSignal(double* signal, int frameLength, int newSizeForFFT)
 }
 
 // Compute the power spectral coefficients on the time-domain signal.
-double* MFCC::computePowerSpectralCoeff(double* signal, int fftSize)
+float* MFCC::computePowerSpectralCoeff(float* signal, int fftSize)
 {
   // Frequencies from 0 (DC), 1 to fftSize/2 (the first half. The second half is the mirroring part of the first part).
   // Therefore, we only get the DC + the non-duplicated frequencies.
   int nbFreqs = fftSize / 2 + 1;
 
-  double* powerSpectralCoef = new double[nbFreqs];
+  float* powerSpectralCoef = new float[nbFreqs];
 
   auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
 
@@ -193,13 +227,13 @@ double* MFCC::computePowerSpectralCoeff(double* signal, int fftSize)
   return powerSpectralCoef;
 }
 
-double* MFCC::computeMelBankFeatures(double* powerSpectralCoef, int fftSize, int nbFilters)
+float* MFCC::computeMelBankFeatures(float* powerSpectralCoef, int fftSize, int nbFilters)
 {
   // Frequencies from 0 (DC), 1 to fftSize/2 (the first half. The second half is the mirroring part of the first part).
   // Therefore, we only get the DC + the non-duplicated frequencies.
   int nbFreqs = fftSize / 2 + 1;
 
-  double* melBankFeatures = new double[nbFilters];
+  float* melBankFeatures = new float[nbFilters];
   for(int i=0; i<nbFilters; i++)
   {
     melBankFeatures[i] = 0.0;
@@ -220,13 +254,13 @@ double* MFCC::computeMelBankFeatures(double* powerSpectralCoef, int fftSize, int
   return melBankFeatures;
 }
 
-double* MFCC::computeMFCC(double* melBankFeatures, int nbFilters)
+float* MFCC::computeMFCC(float* melBankFeatures, int nbFilters)
 {
   // Perform the DCT transformation on the Mel bank features
-  double* mfccs = new double[nbFilters];
-  memset(mfccs, 0.0, nbFilters * sizeof(double));
+  float* mfccs = new float[nbFilters];
+  memset(mfccs, 0.0, nbFilters * sizeof(float));
 
-  double factor = sqrt( 1.0 / ( 2 * nbFilters ) );
+  float factor = sqrt( 1.0 / ( 2 * nbFilters ) );
 
   for(int i=0; i<nbFilters; i++)
   {
@@ -240,10 +274,10 @@ double* MFCC::computeMFCC(double* melBankFeatures, int nbFilters)
   return mfccs;
 }
 
-void MFCC::preEmphasize(double* signal, int length)
+void MFCC::preEmphasize(float* signal, int length)
 {
-  double prev = signal[0];
-  double emphasized = 0.0;
+  float prev = signal[0];
+  float emphasized = 0.0;
   for(int i=1; i<length; i++)
   {
     emphasized = signal[i] - m_preEmphasizeCoeff * prev;
@@ -252,7 +286,7 @@ void MFCC::preEmphasize(double* signal, int length)
   }
 }
 
-void MFCC::addHammingWindow(double* signal, int length)
+void MFCC::addHammingWindow(float* signal, int length)
 {
   for(int i=0; i<length; i++)
   {
@@ -261,19 +295,40 @@ void MFCC::addHammingWindow(double* signal, int length)
 }
 
 // Perform the lifting
-void MFCC::liftMFCCs(std::vector<double> &mfccs, int cepLifter)
+void MFCC::liftMFCCs(std::vector<float> &mfccs, int cepLifter)
 {
-  for(int i=0; i<mfccs.size(); i++)
+  for(size_t i=0; i<mfccs.size(); i++)
+  {
+    mfccs[i] *= ( 1 + (cepLifter / 2.0) * std::sin(M_PI * i / cepLifter) );
+  }
+}
+void MFCC::liftMFCCs(float* mfccs, int length, int cepLifter)
+{
+  for(int i=0; i<length; i++)
   {
     mfccs[i] *= ( 1 + (cepLifter / 2.0) * std::sin(M_PI * i / cepLifter) );
   }
 }
 
 // Perform the normalization.
-void MFCC::normalize(std::vector<double> &values)
+void MFCC::normalize(std::vector<float> &values)
 {
-  int length = values.size();
-  double average = 0.0;
+  size_t length = values.size();
+  float average = 0.0;
+  for(size_t i=0; i<length; i++)
+  {
+    average += values[i];
+  }
+  average /= length;
+
+  for(size_t i=0; i<length; i++)
+  {
+    values[i] -= average;
+  }
+}
+void MFCC::normalize(float* values, int length)
+{
+  float average = 0.0;
   for(int i=0; i<length; i++)
   {
     average += values[i];
@@ -287,7 +342,7 @@ void MFCC::normalize(std::vector<double> &values)
 }
 
 // NOTE: The signal length is fixed to 'frameLength'.
-bool MFCC::mfcc(double* signal)
+bool MFCC::mfcc(float* signal)
 {
   // Pre-emphasize the original signal with the 'frameLength' length.
   preEmphasize(signal, m_frameLength);
@@ -297,37 +352,40 @@ bool MFCC::mfcc(double* signal)
 
   // Get the size for FFT, and expand the signal.
   int fftSize = sizeForFFT(m_frameLength);
-  double* expandedSignalForFFT = expandSignal(signal, m_frameLength, fftSize);
+  float* expandedSignalForFFT = expandSignal(signal, m_frameLength, fftSize);
 
   // Compute the power spectrum.
-  double* powerSpectralCoef = computePowerSpectralCoeff(expandedSignalForFFT, fftSize);
+  float* powerSpectralCoef = computePowerSpectralCoeff(expandedSignalForFFT, fftSize);
   delete [] expandedSignalForFFT;
 
   // Compute the Mel bank features.
-  double* melBankFeatures = computeMelBankFeatures(powerSpectralCoef, fftSize, m_nbFilters);
+  float* melBankFeatures = computeMelBankFeatures(powerSpectralCoef, fftSize, m_nbFilters);
   delete [] powerSpectralCoef;
 
   // Copy to the instance variable.
   for(int i=0; i<m_nbFilters; i++) m_melBankFeatures[i] = melBankFeatures[i];
 
   // Compute the MFCC.
-  double* mfccs = computeMFCC(melBankFeatures, m_nbFilters);
-  delete [] melBankFeatures;
+  float* mfccs = computeMFCC(melBankFeatures, m_nbFilters);
+  // delete [] melBankFeatures;
+  if( m_melBankFeatureArray ) delete [] m_melBankFeatureArray;
+  m_melBankFeatureArray = melBankFeatures;
 
   // Copy to the instance variable.
   for(int i=0; i<m_nbFilters; i++) m_MFCCs[i] = mfccs[i];
-
-  delete []mfccs;
+  // delete []mfccs;
+  if( m_mfccArray ) delete [] m_mfccArray;
+  m_mfccArray = mfccs;
 
   return true;
 }
 
-double* MFCC::preprocessOneShot(double* signal, int frameLength, int &newSizeForFFT)
+float* MFCC::preprocessOneShot(float* signal, int frameLength, int &newSizeForFFT)
 {
   // Get the size for FFT, and expand the signal.
   int fftSize = sizeForFFT(frameLength);
-  double* expandedSignal = new double[fftSize];
-  memset(expandedSignal, 0.0, fftSize * sizeof(double) );
+  float* expandedSignal = new float[fftSize];
+  memset(expandedSignal, 0.0, fftSize * sizeof(float) );
 
   // Pre-emphasize, and add the hamming window.
   expandedSignal[0] = signal[0];
@@ -341,12 +399,12 @@ double* MFCC::preprocessOneShot(double* signal, int frameLength, int &newSizeFor
   return expandedSignal;
 }
 
-std::vector<double> MFCC::getMFCCs(int idxStart, int idxEnd, bool isNormalize, int cepLifter)
+std::vector<float> MFCC::getMFCCs(int idxStart, int idxEnd, bool isNormalize, int cepLifter)
 {
-  std::vector<double>::const_iterator first = m_MFCCs.begin() + idxStart;
-  std::vector<double>::const_iterator last = m_MFCCs.begin() + idxEnd + 1;
+  std::vector<float>::const_iterator first = m_MFCCs.begin() + idxStart;
+  std::vector<float>::const_iterator last = m_MFCCs.begin() + idxEnd + 1;
 
-  std::vector<double> mfccs(first, last);
+  std::vector<float> mfccs(first, last);
 
   // Do the lifting on the desired feature.
   if(cepLifter>0) // cepLifter = 0 means no lifting
@@ -363,12 +421,29 @@ std::vector<double> MFCC::getMFCCs(int idxStart, int idxEnd, bool isNormalize, i
   return mfccs;
 }
 
-std::vector<double> MFCC::getMelBankFeatures(int idxStart, int idxEnd, bool isNormalize)
+float* MFCC::getMFCCArray(int idxStart, int idxEnd, bool isNormalize, int cepLifter)
 {
-  std::vector<double>::const_iterator first = m_melBankFeatures.begin() + idxStart;
-  std::vector<double>::const_iterator last = m_melBankFeatures.begin() + idxEnd + 1;
+  // Do the lifting on the desired feature.
+  if(cepLifter>0) // cepLifter = 0 means no lifting
+  {
+    liftMFCCs(m_mfccArray + idxStart, idxEnd - idxStart + 1, cepLifter);
+  }
 
-  std::vector<double> melBankFeatures(first, last);
+  // Normalize the results.
+  if(isNormalize)
+  {
+    normalize(m_mfccArray + idxStart, idxEnd - idxStart + 1);
+  }
+
+  return m_mfccArray;
+}
+
+std::vector<float> MFCC::getMelBankFeatures(int idxStart, int idxEnd, bool isNormalize)
+{
+  std::vector<float>::const_iterator first = m_melBankFeatures.begin() + idxStart;
+  std::vector<float>::const_iterator last = m_melBankFeatures.begin() + idxEnd + 1;
+
+  std::vector<float> melBankFeatures(first, last);
 
   // Normalize the results.
   if(isNormalize)
@@ -379,30 +454,44 @@ std::vector<double> MFCC::getMelBankFeatures(int idxStart, int idxEnd, bool isNo
   return melBankFeatures;
 }
 
+float* MFCC::getMelBankFeatureArray(int idxStart, int idxEnd, bool isNormalize)
+{
+  // Normalize the results.
+  if(isNormalize)
+  {
+    normalize(m_melBankFeatureArray + idxStart, idxEnd - idxStart + 1);
+  }
+  return m_melBankFeatureArray + idxStart;
+}
 
-double* MFCC::loadWaveData(const char* wavFileName, int msFrame, int msStep, int &nbFrames, int &frameLength, int &frameStep, int &sampleRate)
+
+float* MFCC::loadWaveData(const char* wavFileName, int msFrame, int msStep, int &nbFrames, int &frameLength, int &frameStep, int &sampleRate)
 {
   AudioFile<double> audioFile;
   audioFile.load(wavFileName);
 
   sampleRate = audioFile.getSampleRate();
-
   std::vector<std::vector<double>> buffer = audioFile.samples;
-  std::vector<double> wavData = buffer[0];
 
-  // int length = wavData.size();
-  int originalLength = 3.5 * sampleRate; // keep the first 3.5 seconds
+  std::vector<double> wavData = buffer[0]; // only use the first channel
+
+  return padScaleOriginalWaveData(wavData, sampleRate, msFrame, msStep, nbFrames, frameLength, frameStep);
+}
+
+float* MFCC::padScaleOriginalWaveData(const std::vector<double> &wavData, int sampleRate, int msFrame, int msStep, int &nbFrames, int &frameLength, int &frameStep)
+{
+  int length = wavData.size();
 
   frameLength = 0.001 * msFrame * sampleRate;
   frameStep = 0.001 * msStep * sampleRate;
 
-  nbFrames = (int)ceil(1.0*(originalLength-frameLength)/frameStep);
+  nbFrames = (int)ceil(1.0*(length-frameLength)/frameStep);
 
   int paddedLength = frameLength*nbFrames;
-  double* signal = new double[paddedLength];
-  memset(signal, 0.0, paddedLength*sizeof(double));
-  for(int i=0; i<originalLength; i++) signal[i] = floor(32768*wavData[i]);
-  // for(int i=0; i<originalLength; i++) signal[i] = floor(wavData[i]);
+  float* signal = new float[paddedLength];
+  memset(signal, 0.0, paddedLength*sizeof(float));
+  for(int i=0; i<length; i++) signal[i] = floor(32768*wavData[i]);
+  // for(int i=0; i<length; i++) signal[i] = floor(wavData[i]);
 
   return signal;
 }

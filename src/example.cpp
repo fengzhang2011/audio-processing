@@ -122,7 +122,7 @@ void mfcc_test ()
       printf("%f,", mfccs[j]);
     }
     printf("\n");
-    break;
+//    break;
   }
 }
 
