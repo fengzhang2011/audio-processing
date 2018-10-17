@@ -7,7 +7,7 @@ include_directories(./include)
 #set(CMAKE_CXX_FLAGS "-ansi -pedantic -Werror -Wall -O3 -std=c++17 -fPIC -fext-numeric-literals -ffast-math")
 set(CMAKE_CXX_FLAGS "-std=c++17")
 
-add_executable(audio_processing ./src/example.cpp)
+add_executable(audio_processing ./src/example.cpp ./src/mfcc.cpp)
 
 # audiofile library
 add_library(audiofile STATIC IMPORTED)

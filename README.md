@@ -138,3 +138,13 @@ Once these commands are done, the ```libaudiofile.a``` will be generated under t
 
 Copy the header file ```src/AudioFile.h``` and ```libaudiofile.a``` to ```./include``` and ```./lib``` folders, respectively, into this repository.
 
+### 2.4 MFCC compuation
+
+The code are written based on these great documents. Thanks for the authors.
+
+[Mel Frequency Cepstral Coefficient (MFCC) tutorial. James Lyons. ](http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs)
+
+[Speech Processing for Machine Learning: Filter banks, Mel-Frequency Cepstral Coefficients (MFCCs) and What's In-Between. Haytham Fayek. ](https://haythamfayek.com/2016/04/21/speech-processing-for-machine-learning.html)
+
+[Hamming Window, SPECTRAL AUDIO SIGNAL PROCESSING. Julius Orion Smith III. ](https://ccrma.stanford.edu/~jos/sasp/Hamming_Window.html)
+

@@ -23,6 +23,7 @@
 #include "AudioFile.h"
 #include "ffts.h"
 #include "pitch_detection.h"
+#include "mfcc.h"
 
 
 
@@ -91,12 +92,47 @@ void pitch_detection (const char* filename)
   }
 }
 
+void mfcc_test ()
+{
+  std::string wavFileName = "../wav/OSR_us_000_0010_8k.wav";
+
+  int sampleRate = 0;
+  int frameLength = 0;
+  int frameStep = 0;
+  int nbFrames = 0;
+
+  double* signal = MFCC::loadWaveData(wavFileName.c_str(), 25, 10, nbFrames, frameLength, frameStep, sampleRate);
+
+  double lowerBound = 0;
+  double upperBound = 3500;
+
+  int nbFilters = 40;
+  double preEmphFactor = 0.97;
+
+  MFCC m(frameLength, sampleRate, nbFilters, lowerBound, upperBound, preEmphFactor);
+
+  for(int i=0; i<nbFrames; i++)
+  {
+//    printf("%d,", i);
+    m.mfcc(signal+i*frameStep);
+    std::vector<double> mfccs = m.getMFCCs(1, 12);
+    // mfccs = m.getMelBankFeatures(0, 40, false);
+    for(int j=0; j<mfccs.size(); j++)
+    {
+      printf("%f,", mfccs[j]);
+    }
+    printf("\n");
+    break;
+  }
+}
 
 
 int main (int argc, char *argv[])
 {
 
   pitch_detection("../wav/female.wav");
+
+  mfcc_test();
 
   return 0;
 
