@@ -16,7 +16,8 @@
         "src/napi_pitch.cpp",
         "src/napi_fft.cpp",
         "src/napi_mfcc.cpp",
-        "src/mfcc.cpp"
+        "src/mfcc.cpp",
+        "src/amr.cpp"
       ],
       "include_dirs": [
         "./include"

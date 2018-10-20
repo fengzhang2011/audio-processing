@@ -24,6 +24,7 @@
 #include "ffts.h"
 #include "pitch_detection.h"
 #include "mfcc.h"
+#include "amr.h"
 
 
 
@@ -101,7 +102,7 @@ void mfcc_test ()
   int frameStep = 0;
   int nbFrames = 0;
 
-  double* signal = MFCC::loadWaveData(wavFileName.c_str(), 25, 10, nbFrames, frameLength, frameStep, sampleRate);
+  float* signal = MFCC::loadWaveData(wavFileName.c_str(), 25, 10, nbFrames, frameLength, frameStep, sampleRate);
 
   double lowerBound = 0;
   double upperBound = 3500;
@@ -115,7 +116,7 @@ void mfcc_test ()
   {
 //    printf("%d,", i);
     m.mfcc(signal+i*frameStep);
-    std::vector<double> mfccs = m.getMFCCs(1, 12);
+    std::vector<float> mfccs = m.getMFCCs(1, 12);
     // mfccs = m.getMelBankFeatures(0, 40, false);
     for(int j=0; j<mfccs.size(); j++)
     {
@@ -126,6 +127,30 @@ void mfcc_test ()
   }
 }
 
+void amr_test()
+{
+  char szInputFileName[] = "../wav/sample.amr";
+  char szOutputFileName[256] = {0};
+
+  strcpy(szOutputFileName, basename(szInputFileName));
+  strcat(szOutputFileName, ".pcm");
+
+  FILE *fp = NULL;
+  if (!(fp = fopen(szInputFileName, "rb"))) return;
+
+  fseek(fp, 0L, SEEK_END);
+  int sz = ftell(fp);
+  printf("file size = %d\n", sz);
+  fseek(fp, 0L, SEEK_SET);
+  char* data = (char*)malloc(sz);
+  fread(data, (size_t)1, sz, fp);
+
+  short* output = amrConvert(data, sz);
+  free(output);
+
+  free(data);
+  fclose(fp);
+}
 
 int main (int argc, char *argv[])
 {
