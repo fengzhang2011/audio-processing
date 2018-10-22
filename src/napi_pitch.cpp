@@ -103,6 +103,7 @@ napi_value detectPitch(napi_env env, napi_callback_info args)
   // Set the pitch.
   napi_value retPitch;
   status = napi_create_double(env, pitch, &retPitch);
+  if (status != napi_ok) return nullptr;
 
   // Create the resulting object.
   status = napi_create_object(env, &result);

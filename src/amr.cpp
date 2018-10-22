@@ -49,7 +49,6 @@ static int getFrameType(char* data) { return ((*(int*) data) & 0x78) >> 3; }
 static int getFrameBytes(int frameType, enum AMR_TYPE type) { return (type==AMR_NB) ? amrnb_frame_sizes[frameType] + 1 : amrwb_frame_sizes[frameType] + 1; } // type == 0: AMR-NB,  type == 1: AMR-WB
 static int getFrameBytesDirect(char* data, enum AMR_TYPE type) { int frameType = getFrameType(data); return getFrameBytes(frameType, type); }
 static int getFrameCount(char* data, int size, enum AMR_TYPE type) { int count = 0; int i = (type==AMR_NB) ? strlen(AMRNB_HEADER): strlen(AMRWB_HEADER); while(i < size) { i += getFrameBytesDirect(data + i, type); count ++; } return count; }
-static int getSampleCount(char* data, int size, enum AMR_TYPE type) { int nbFrames = getFrameCount(data, size, type); return (type==AMR_NB) ? nbFrames * AMRNB_NUM_SAMPLES : nbFrames * AMRWB_NUM_SAMPLES; }
 
 
 enum AMR_TYPE getAMRType(char* data, int size)
@@ -59,6 +58,12 @@ enum AMR_TYPE getAMRType(char* data, int size)
          : ( (0==strncmp(data, AMRWB_HEADER, strlen(AMRWB_HEADER)))
            ? AMR_WB
            : AMR_UNKNOWN);
+}
+
+int getSampleCount(char* data, int size, enum AMR_TYPE type)
+{
+  int nbFrames = getFrameCount(data, size, type);
+  return (type==AMR_NB) ? nbFrames * AMRNB_NUM_SAMPLES : nbFrames * AMRWB_NUM_SAMPLES;
 }
 
 static int amrDecodeFrame(char *data, int nSize, short* pcmDataCurrentFrame, void* amrDecoder, enum AMR_TYPE type)

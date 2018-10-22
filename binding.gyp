@@ -2,12 +2,14 @@
   "targets": [
     {
       "target_name": "feng_ap",
-      "cflags_cc": [ "-ansi -pedantic -Werror -Wall -O3 -std=c++17 -fPIC -fext-numeric-literals -ffast-math" ],
+      "cflags_cc": [ "-ansi -pedantic -Werror -Wall -O3 -std=c++17 -fPIC -fext-numeric-literals -ffast-math -static" ],
       "ldflags": [ ],
       "libraries": [
-        "../lib/libaudiofile.a",
         "../lib/libpitch_detection.a",
-        "../lib/libffts.a"
+        "../lib/libffts.a",
+        "../lib/libopencore-amrnb.a",
+        "../lib/libopencore-amrwb.a",
+        "../lib/libaudiofile.a"
       ],
       "sources": [
         "src/napi_module.cpp",
@@ -17,6 +19,7 @@
         "src/napi_fft.cpp",
         "src/napi_mfcc.cpp",
         "src/mfcc.cpp",
+        "src/napi_amr.cpp",
         "src/amr.cpp"
       ],
       "include_dirs": [
