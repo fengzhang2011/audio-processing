@@ -39,13 +39,13 @@ async function test() {
 
   let td_data = await ap.ifft(freq_data.real, freq_data.imag);
   // console.log(td_data);
-/*
+
   // Test MFCCs
-  audio = await ap.readAudio('./wav/OSR_us_000_0010_8k.wav');
+  let audio2 = await ap.readAudio('./wav/OSR_us_000_0010_8k.wav');
   // console.log(audio2.samplerate);
-  let mfcc_data = await ap.mfcc(audio.wavdataL, audio.samplerate, 40, 0, 3500, 25, 10, 0.97);
+  let mfcc_data = await ap.mfcc(audio2.wavdataL, audio2.samplerate, 40, 0, 3500, 25, 10, 0.97);
   // console.log(mfcc_data);
- */
+
   var fs = require("fs");
   fs.readFile("./wav/sample.amr", async function (err, data) {
     if (err) throw err;
