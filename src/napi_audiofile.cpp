@@ -15,26 +15,43 @@
 #include "napi_audiofile.h"
 
 
+void throwException(napi_env env, const char* error)
+{
+  char code[256];
+  sprintf(code, "%s:%d", __FILE__, __LINE__);
+  napi_throw_error(env, code, error);
+}
+
 // Read the Audio File (Only WAV/PCM and AIFF are supported.)
 napi_value readAudio(napi_env env, napi_callback_info args)
 {
   napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
 
   napi_status status;
+
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
+  // Create a value with which to conclude the deferred.
+  //status = napi_get_undefined(env, &result);
+  //if (status != napi_ok) return NULL;
+  // Create the resulting object.
+  status = napi_create_object(env, &result);
+  if (status != napi_ok) { throwException(env, "Failed to create the result object."); return nullptr; }
 
   // Parse the input arguments.
   size_t argc = 1;
   napi_value argv[1];
   status = napi_get_cb_info(env, args, &argc, argv, NULL, NULL);
+  if (status != napi_ok) { throwException(env, "Failed to parse the arguments."); return nullptr; }
 
   char wavFileName[128];
   size_t lenFileName;
   status = napi_get_value_string_utf8(env, argv[0], wavFileName, 128, &lenFileName);
-  if (status != napi_ok) return nullptr;
-
-  // Create the resulting object.
-  status = napi_create_object(env, &result);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the wav file name."); return nullptr; }
 
   // -- READ IN THE WAVE FILE.
   AudioFile<float> audioFile;
@@ -44,21 +61,22 @@ napi_value readAudio(napi_env env, napi_callback_info args)
   int32_t sampleRate = audioFile.getSampleRate();
   napi_value samplerate;
   status = napi_create_int32(env, sampleRate, &samplerate);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the sample rate."); return nullptr; }
 
   int32_t bitDepth = audioFile.getBitDepth();
   napi_value bitdepth;
   status = napi_create_int32(env, bitDepth, &bitdepth);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the bit depth."); return nullptr; }
 
   int32_t nbChannels = audioFile.getNumChannels();
   napi_value channels;
   status = napi_create_int32(env, nbChannels, &channels);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the number of channels."); return nullptr; }
 
   //    -- Read the wave data
   std::vector<std::vector<float>> buffer = audioFile.samples;
-  if(buffer.size()==0) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the wav data using audioFile.samples."); return nullptr; }
+  //printf("%s:%d\n", __FILE__, __LINE__);
 
   // We only use the first channel or at most the first two channels.
   napi_value wavdataL;
@@ -70,46 +88,53 @@ napi_value readAudio(napi_env env, napi_callback_info args)
     float* data = NULL;
     size_t byte_length = length*sizeof(float);
     status = napi_create_arraybuffer(env, byte_length, (void**)&data, &arraybuffer);
-    if (status != napi_ok) return nullptr;
+    if (status != napi_ok) { throwException(env, "Failed to create the arraybuffer."); return nullptr; }
     for (size_t i=0; i<length; i++) data[i] = wavData[i];
 
     //       -- Second, create the TypedArray.
     size_t byte_offset = 0;
     status = napi_create_typedarray(env, napi_float32_array, length, arraybuffer, byte_offset, &wavdataL);
-    if (status != napi_ok) return nullptr;
+    if (status != napi_ok) { throwException(env, "Failed to create the TypedArray: wavdataL."); return nullptr; }
   }
   napi_value wavdataR;
-  if (buffer.size()>1)
+  if (buffer.size()>0)
   {
-    std::vector<float> wavData = buffer[1];
+    std::vector<float> wavData = buffer[0];
     size_t length = wavData.size();
     //       -- First, create the ArrayBuffer.
     napi_value arraybuffer;
     float* data = NULL;
     size_t byte_length = length*sizeof(float);
     status = napi_create_arraybuffer(env, byte_length, (void**)&data, &arraybuffer);
-    if (status != napi_ok) return nullptr;
+    if (status != napi_ok) { throwException(env, "Failed to create the arraybuffer."); return nullptr; }
     for (size_t i=0; i<length; i++) data[i] = wavData[i];
 
     //       -- Second, create the TypedArray.
     size_t byte_offset = 0;
     status = napi_create_typedarray(env, napi_float32_array, length, arraybuffer, byte_offset, &wavdataR);
-    if (status != napi_ok) return nullptr;
+    if (status != napi_ok) { throwException(env, "Failed to create the TypedArray: wavdataR."); return nullptr; }
   }
 
+  //printf("%s:%d\n", __FILE__, __LINE__);
   // Set the named property.
   status = napi_set_named_property(env, result, "samplerate", samplerate);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: samplerate."); return nullptr; }
   status = napi_set_named_property(env, result, "bitdepth", bitdepth);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: bitdepth."); return nullptr; }
   status = napi_set_named_property(env, result, "channels", channels);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: channels."); return nullptr; }
   status = napi_set_named_property(env, result, "wavdataL", wavdataL);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: wavdataL."); return nullptr; }
   status = napi_set_named_property(env, result, "wavdataR", wavdataR);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: wavdataR."); return nullptr; }
 
-  return result;
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
 }
 
 // Write wave data into the Audio File (Only support the WAV/PCM format.)
