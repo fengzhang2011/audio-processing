@@ -15,6 +15,7 @@
 #include "amr.h"
 
 #include "napi_amr.h"
+#include "napi_common.h"
 
 
 #include <stdio.h>
@@ -25,10 +26,17 @@
 // return: pcmdata  (float32array)
 napi_value amr2pcm(napi_env env, napi_callback_info args)
 {
+  napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
+
   napi_status status;
 
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
   // Create the resulting object.
-  napi_value result;
   status = napi_create_object(env, &result);
   if (status != napi_ok) return nullptr;
 
@@ -86,5 +94,11 @@ napi_value amr2pcm(napi_env env, napi_callback_info args)
   status = napi_set_named_property(env, result, "samplerate", samplerate);
   if (status != napi_ok) return nullptr;
 
-  return result;
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
 }

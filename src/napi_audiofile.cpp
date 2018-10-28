@@ -13,14 +13,8 @@
 #include "AudioFile.h"
 
 #include "napi_audiofile.h"
+#include "napi_common.h"
 
-
-void throwException(napi_env env, const char* error)
-{
-  char code[256];
-  sprintf(code, "%s:%d", __FILE__, __LINE__);
-  napi_throw_error(env, code, error);
-}
 
 // Read the Audio File (Only WAV/PCM and AIFF are supported.)
 napi_value readAudio(napi_env env, napi_callback_info args)
@@ -35,9 +29,6 @@ napi_value readAudio(napi_env env, napi_callback_info args)
   status = napi_create_promise(env, &deferred, &promise);
   if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
 
-  // Create a value with which to conclude the deferred.
-  //status = napi_get_undefined(env, &result);
-  //if (status != napi_ok) return NULL;
   // Create the resulting object.
   status = napi_create_object(env, &result);
   if (status != napi_ok) { throwException(env, "Failed to create the result object."); return nullptr; }
@@ -145,8 +136,14 @@ napi_value readAudio(napi_env env, napi_callback_info args)
 napi_value saveAudio(napi_env env, napi_callback_info args)
 {
   napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
 
   napi_status status;
+
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
 
   // Parse the input arguments.
   size_t argc = 6;
@@ -216,5 +213,12 @@ napi_value saveAudio(napi_env env, napi_callback_info args)
   audioFile.save(wavFileName);
 
   result = argv[0];
-  return result;
+
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
 }

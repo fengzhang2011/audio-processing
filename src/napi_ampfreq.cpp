@@ -16,8 +16,8 @@
 #include "ffts.h"
 
 #include "napi_ampfreq.h"
+#include "napi_common.h"
 
-// #include <stdio.h>
 
 void computeAmplifierFrequency(const std::vector<float> &wavData, std::vector<float> &amplifiers, int32_t sampleRate, size_t window, size_t overlap)
 {
@@ -64,12 +64,19 @@ void computeAmplifierFrequency(const std::vector<float> &wavData, std::vector<fl
 // arg[1]: sample rate
 napi_value ampfreq(napi_env env, napi_callback_info args)
 {
+  napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
+
   napi_status status;
 
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
   // Create the resulting object.
-  napi_value result;
   status = napi_create_object(env, &result);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to create the result object."); return nullptr; }
 
   // Parse the input arguments.
   size_t argc = 2;
@@ -83,7 +90,7 @@ napi_value ampfreq(napi_env env, napi_callback_info args)
   napi_value arraybuffer;
   size_t byte_offset;
   status = napi_get_typedarray_info(env, argv[0], &type, &length, (void**) &data, &arraybuffer, &byte_offset);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the arraybuffer."); return nullptr; }
   // -- Save the wave data buffer. (Only accepts one channel).
   std::vector<float> wavData(length); // We only use the first channel or at most the first two channels.
   for (size_t i=0; i<length; i++) wavData[i] = data[i];
@@ -91,7 +98,7 @@ napi_value ampfreq(napi_env env, napi_callback_info args)
   // -- Get the sample rate.
   int32_t sampleRate;
   status = napi_get_value_int32(env, argv[1], &sampleRate);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to read the sample rate."); return nullptr; }
 
   // Compute the amplifier-frequency.
   size_t window = sampleRate; // As as result, each data point in the result represents 1 Hz.
@@ -108,18 +115,24 @@ napi_value ampfreq(napi_env env, napi_callback_info args)
   data = NULL;
   size_t byte_length = length*sizeof(float);
   status = napi_create_arraybuffer(env, byte_length, (void**)&data, &arraybuffer);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to create the arraybuffer."); return nullptr; }
   for (size_t i=0; i<length; i++) data[i] = amplifiers[i];
   // -- Second, create the TypedArray.
   byte_offset = 0;
   napi_value ampfreq_value;
   status = napi_create_typedarray(env, napi_float32_array, length, arraybuffer, byte_offset, &ampfreq_value);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to create the arraybuffer."); return nullptr; }
 
   // Set the named property.
   status = napi_set_named_property(env, result, "ampfreq", ampfreq_value);
-  if (status != napi_ok) return nullptr;
+  if (status != napi_ok) { throwException(env, "Failed to set the result: ampfre."); return nullptr; }
 
-  return result;
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
 }
 
