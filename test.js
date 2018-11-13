@@ -22,9 +22,9 @@ async function test() {
   // let audio = await ap.readAudio('./wav/OSR_us_000_0010_8k.wav');
   console.log(audio.samplerate);
   ap.saveAudio('haha.wav', audio.wavdataL, audio.wavdataR, audio.samplerate, audio.bitdepth, audio.channels);
-  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'acorr'));
-  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'yin'));
-  console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'mpm'));
+  console.log(await ap.detectPitch(audio.wavdataL, audio.samplerate, 'acorr'));
+  console.log(await ap.detectPitch(audio.wavdataL, audio.samplerate, 'yin'));
+  console.log(await ap.detectPitch(audio.wavdataL, audio.samplerate, 'mpm'));
   // console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'goertzel'));
   // console.log(ap.detectPitch(audio.wavdataL, audio.samplerate, 'dft'));
 
@@ -52,6 +52,13 @@ async function test() {
     let pcm_data = await ap.amr2pcm(data, data.length);
     ap.saveAudio('sample.wav', pcm_data.pcm, pcm_data.pcm, pcm_data.samplerate, pcm_data.bitdepth, 1);
   });
+
+  fs.readFile("./wav/t2.mp3", async function (err, data) {
+    if (err) throw err;
+    let pcm_data = await ap.mp32pcm(data, data.length);
+    ap.saveAudio('t2.wav', pcm_data.pcm, pcm_data.pcm, pcm_data.samplerate, pcm_data.bitdepth, 1);
+  });
+
 }
 
 test();

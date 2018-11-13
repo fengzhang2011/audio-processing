@@ -20,7 +20,9 @@
         "src/napi_mfcc.cpp",
         "src/mfcc.cpp",
         "src/napi_amr.cpp",
-        "src/amr.cpp"
+        "src/amr.cpp",
+        "src/minimp3.cpp",
+        "src/napi_mp3.cpp"
       ],
       "include_dirs": [
         "./include"
