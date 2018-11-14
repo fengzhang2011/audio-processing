@@ -148,3 +148,14 @@ The code are written based on these great documents. Thanks for the authors.
 
 [Hamming Window, SPECTRAL AUDIO SIGNAL PROCESSING. Julius Orion Smith III. ](https://ccrma.stanford.edu/~jos/sasp/Hamming_Window.html)
 
+### 2.5 AMR WB/NB
+
+### 2.6 MP3 decoder
+
+[https://github.com/lieff/minimp3](https://github.com/lieff/minimp3)
+
+### 2.7 Weiner filter for Noise Reduction and speech enhancement.
+
+Pascal Scalart. [Wiener Noise Suppressor based on Decision-Directed method with TSNR and HRNR algorithms.](https://www.mathworks.com/matlabcentral/fileexchange/24462-wiener-filter-for-noise-reduction-and-speech-enhancement)
+
+

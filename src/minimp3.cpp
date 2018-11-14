@@ -5,8 +5,14 @@
     See <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 
+
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "minimp3.h"
 
@@ -1432,11 +1438,48 @@ static int mp3d_find_frame(const uint8_t *mp3, int mp3_bytes, int *free_format_b
     return i;
 }
 
+static int mp3dec_open_file(const char *file_name, mp3dec_map_info_t *map_info)
+{
+    int file;
+    struct stat st;
+    memset(map_info, 0, sizeof(*map_info));
+retry_open:
+    file = open(file_name, O_RDONLY);
+    if (file < 0 && (errno == EAGAIN || errno == EINTR))
+        goto retry_open;
+    if (file < 0 || fstat(file, &st) < 0)
+    {
+        close(file);
+        return -1;
+    }
+
+    map_info->size = st.st_size;
+retry_mmap:
+    map_info->buffer = (const uint8_t*) mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, file, 0);
+    if (MAP_FAILED == map_info->buffer && (errno == EAGAIN || errno == EINTR))
+        goto retry_mmap;
+    close(file);
+    if (MAP_FAILED == map_info->buffer)
+        return -1;
+    return 0;
+}
+
+static void mp3dec_close_file(mp3dec_map_info_t *map_info)
+{
+    if (map_info->buffer && MAP_FAILED != map_info->buffer)
+        munmap((void *)map_info->buffer, map_info->size);
+    map_info->buffer = 0;
+    map_info->size   = 0;
+}
+
+
+
 
 void mp3dec_init(mp3dec_t *dec)
 {
     dec->header[0] = 0;
 }
+
 
 void mp3dec_load_buf(mp3dec_t *dec, const uint8_t *buf, size_t buf_size, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data)
 {
@@ -1605,5 +1648,16 @@ int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, mp3d_s
 #endif /* MINIMP3_ONLY_MP3 */
     }
     return success*hdr_frame_samples(dec->header);
+}
+
+int mp3dec_load(mp3dec_t *dec, const char *file_name, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data)
+{
+    int ret;
+    mp3dec_map_info_t map_info;
+    if ((ret = mp3dec_open_file(file_name, &map_info)))
+        return ret;
+    mp3dec_load_buf(dec, map_info.buffer, map_info.size, info, progress_cb, user_data);
+    mp3dec_close_file(&map_info);
+    return 0;
 }
 

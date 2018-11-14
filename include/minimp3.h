@@ -1,5 +1,5 @@
-#ifndef _INCLUDE_AMR_H_
-#define _INCLUDE_AMR_H_
+#ifndef _INCLUDE_MINIMP3_H_
+#define _INCLUDE_MINIMP3_H_
 
 /*
     https://github.com/lieff/minimp3
@@ -71,6 +71,12 @@ typedef struct
 
 typedef struct
 {
+    const uint8_t *buffer;
+    size_t size;
+} mp3dec_map_info_t;
+
+typedef struct
+{
     int frame_bytes, channels, hz, layer, bitrate_kbps;
 } mp3dec_frame_info_t;
 
@@ -116,4 +122,6 @@ void mp3dec_init(mp3dec_t *dec);
 void mp3dec_load_buf(mp3dec_t *dec, const uint8_t *buf, size_t buf_size, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data);
 int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, mp3d_sample_t *pcm, mp3dec_frame_info_t *info);
 
-#endif // #ifndef _INCLUDE_AMR_H_
+int mp3dec_load(mp3dec_t *dec, const char *file_name, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data);
+
+#endif // #ifndef _INCLUDE_MINIMP3_H_

@@ -2,12 +2,12 @@ cmake_minimum_required (VERSION 2.6)
 
 project (audio_processing)
 
-include_directories(./include)
+#include_directories(./include)
 
 #set(CMAKE_CXX_FLAGS "-ansi -pedantic -Werror -Wall -O3 -std=c++17 -fPIC -fext-numeric-literals -ffast-math")
 set(CMAKE_CXX_FLAGS "-std=c++17")
 
-add_executable(audio_processing ./src/example.cpp ./src/mfcc.cpp ./src/amr.cpp ./src/minimp3.cpp)
+add_executable(audio_processing ./src/example.cpp ./src/mfcc.cpp ./src/amr.cpp ./src/denoise.cpp ./src/minimp3.cpp)
 
 # audiofile library
 add_library(audiofile STATIC IMPORTED)

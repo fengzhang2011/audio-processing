@@ -22,7 +22,8 @@
         "src/napi_amr.cpp",
         "src/amr.cpp",
         "src/minimp3.cpp",
-        "src/napi_mp3.cpp"
+        "src/napi_mp3.cpp",
+        "src/denoise.cpp"
       ],
       "include_dirs": [
         "./include"
