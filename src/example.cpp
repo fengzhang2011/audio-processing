@@ -154,7 +154,7 @@ void amr_test()
   fclose(fp);
 }
 
-void denoise_test(const char* fileName)
+void mp3_test(const char* fileName)
 {
   // Convert MP3 data
   mp3dec_t mp3d;
@@ -166,10 +166,24 @@ void denoise_test(const char* fileName)
 
   int sampleRate = info.hz;
   printf("Sample rate = %d\n", sampleRate);
+}
+
+void denoise_test(const char* fileName)
+{
+  AudioFile<float> audioFile;
+  audioFile.load(fileName);
+  int sampleRate = audioFile.getSampleRate();
+
+  printf("Sample rate = %d\n", sampleRate);
+
+  std::vector<std::vector<float>> buffer = audioFile.samples;
+  if(buffer.size()==0) return;
+  // We only use the first channel
+  int samples = buffer[0].size();
 
   std::vector<float> noisySpeech(samples);
   for(int i=0; i<samples; i++) {
-    noisySpeech[i] = pcm[i]/32768.0;
+    noisySpeech[i] = buffer[0][i];
   }
 
   std::vector<float> clean = weinerDenoiseTSNR(noisySpeech, sampleRate, 10);
@@ -177,13 +191,13 @@ void denoise_test(const char* fileName)
   //  printf("%f", clean[i]);
   //}
 
-  std::vector<std::vector<float>> buffer;
-  buffer.push_back(noisySpeech);
-  AudioFile<float> audioFile;
-  audioFile.setAudioBuffer(buffer);
-  audioFile.setSampleRate(sampleRate);
-  audioFile.setNumChannels(1);
-  audioFile.save("./t2.wav");
+  std::vector<std::vector<float>> cleanedBuffer;
+  cleanedBuffer.push_back(noisySpeech);
+  AudioFile<float> audioFileOut;
+  audioFileOut.setAudioBuffer(cleanedBuffer);
+  audioFileOut.setSampleRate(sampleRate);
+  audioFileOut.setNumChannels(1);
+  audioFileOut.save("./clean.wav");
 }
 
 int main (int argc, char *argv[])
@@ -193,7 +207,9 @@ int main (int argc, char *argv[])
 
   // mfcc_test();
 
-  denoise_test("../wav/t2.mp3");
+  // mp3_test("../wav/t2.mp3");
+
+  denoise_test("../wav/noisy.wav");
 
   return 0;
 
