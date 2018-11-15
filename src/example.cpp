@@ -187,12 +187,12 @@ void denoise_test(const char* fileName)
   }
 
   std::vector<float> clean = weinerDenoiseTSNR(noisySpeech, sampleRate, 10);
-  //for(int i=0; i<clean.size(); i++) {
-  //  printf("%f", clean[i]);
+  //for(int i=0; i<20; i++) {//clean.size(); i++) {
+  //  printf("%.20f\n", clean[i]);
   //}
 
   std::vector<std::vector<float>> cleanedBuffer;
-  cleanedBuffer.push_back(noisySpeech);
+  cleanedBuffer.push_back(clean);
   AudioFile<float> audioFileOut;
   audioFileOut.setAudioBuffer(cleanedBuffer);
   audioFileOut.setSampleRate(sampleRate);

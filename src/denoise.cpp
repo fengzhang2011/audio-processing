@@ -232,13 +232,15 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
 
     for(int j=0; j<frameLength; j++) {
       news[i*offset+j] += std::real(out[j])/normFactor/fftSize;
+      // news[i*offset+j] *= 100000000;
     }
     // debug(news);
 
     ffts_free(fft_forward);
     ffts_free(fft_backward);
-    break;
+    // break;
   }
+  // debug(news);
 
   return news; // noisySpeech;
 }
