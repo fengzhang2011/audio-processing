@@ -19,7 +19,7 @@ void debug(std::vector<std::complex<float>> data) {
   }
 }
 
-void gainControl(std::vector<float>& gain, int constraintInLength)
+void gainControl(std::vector<float>& gain, int constraintInLength, auto fft_forward, auto fft_backward)
 {
   float fftSize = gain.size();
   float meanGain = 0.0;
@@ -42,7 +42,7 @@ void gainControl(std::vector<float>& gain, int constraintInLength)
   // Frequency -> Time
   // Computation of the non-constrained impulse response
   std::vector<std::complex<float>> out(fftSize);
-  auto fft_backward = ffts_init_1d(fftSize, FFTS_BACKWARD);
+  // auto fft_backward = ffts_init_1d(fftSize, FFTS_BACKWARD);
   ffts_execute(fft_backward, gainc.data(), out.data());
   std::vector<float> impulseR(fftSize);
   std::vector<float> impulseR2(fftSize);
@@ -62,14 +62,14 @@ void gainControl(std::vector<float>& gain, int constraintInLength)
     }
   }
   // debug(impulseR2);
-  ffts_free(fft_backward);
+  // ffts_free(fft_backward);
 
   // Time -> Frequency
   std::vector<std::complex<float>> input(fftSize);
   for(int i=0; i<fftSize; i++) {
     input[i] = {impulseR2[i], 0.0};
   }
-  auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
+  // auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
   ffts_execute(fft_forward, input.data(), out.data());
   float meanNewGain = 0.0;
   for(int i=0; i<fftSize; i++) {
@@ -85,7 +85,7 @@ void gainControl(std::vector<float>& gain, int constraintInLength)
   }
   // debug(gain);
 
-  ffts_free(fft_forward);
+  // ffts_free(fft_forward);
 
 }
 
@@ -94,7 +94,7 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
   // debug(noisySpeech);
   int samples = noisySpeech.size();
   int frameLength = std::floor(0.020*sampleRate); // frame length is fixed to 20 ms.
-  int fftSize = 2*frameLength; // FFT size is twice the frame length.
+  int fftSize = 2*frameLength; // FFT size is twice the frame length.  change from 640 to 512 can significantly reduce the time consumed.
   int isFrameLength = nbInitialSilentFrames * frameLength; // Initial Silence or Noise Only part in samples (= ten frames)
 
   // Compute the hannWindow.
@@ -108,8 +108,11 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
   std::vector<std::complex<float>> signal_hanwin(fftSize);
   std::vector<std::complex<float>> out(fftSize);
 
+  auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
+  auto fft_backward = ffts_init_1d(fftSize, FFTS_BACKWARD);
+
   std::vector<float> nsum(fftSize);
-  for(int i=0; i<=isFrameLength-frameLength; i++) {
+  for(int i=0; i<=isFrameLength-frameLength; i+=1) {
     for(int j=0; j<fftSize; j++) {
       if(j<frameLength) {
         float hanwin = noisySpeech[i+j] * hannWindow[j];
@@ -118,18 +121,18 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
         signal_hanwin[j] = {0.0, 0.0};
       }
     }
-    auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
     ffts_execute(fft_forward, signal_hanwin.data(), out.data());
     for(int j=0; j<fftSize; j++)
     {
       nsum[j] += 1.0*pow(std::abs(out[j]), 2);
     }
-    ffts_free(fft_forward);
   }
+//    ffts_free(fft_forward);
 
   for(int i=0; i<fftSize; i++) {
     nsum[i] /= (isFrameLength-frameLength+1);
   }
+
   // printf("isFrameLength=%d frameLength=%d\n", isFrameLength, frameLength);
   // debug(nsum);
 
@@ -141,7 +144,6 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
   int max_m = std::floor((samples-fftSize)/offset);
   // printf("overlap: %d  offset: %d  max_m: %d\n", overlap, offset, max_m);
 
-  std::vector<float> zvector(fftSize);
   std::vector<float> oldmag(fftSize);
   std::vector<float> news(samples);
   std::vector<std::vector<float>> phasea(max_m); // fftSize * max_m
@@ -152,32 +154,24 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
 
   // Iteration to remove noise
   // --------------- TSNR ---------------------
-  std::vector<float> speech(frameLength);
   std::vector<std::complex<float>> winy(fftSize);
   std::vector<std::complex<float>> ffty(fftSize);
   std::vector<float> phasey(fftSize);
   std::vector<float> magy(fftSize);
-  std::vector<float> postsnr(fftSize);
-  std::vector<float> eta(fftSize);
   std::vector<float> newmag(fftSize);
-  std::vector<float> tsnr(fftSize);
   std::vector<float> Gtsnr(fftSize);
   for(int i=0; i<max_m; i++) {
-    // Extract speech segment
-    for(int j=0; j<frameLength; j++) {
-      speech[j] = noisySpeech[i*offset+j];
-    }
-    // Perform hanning window
+    // Extract speech segment, and perform the hanning window.
     for(int j=0; j<fftSize; j++ ) {
       if(j<frameLength) {
-        winy[j] = {float(hannWindow[j] * speech[j]), 0.0};
-        // printf("%f\n", float(hannWindow[j] * speech[j]));
+        float sample_value = noisySpeech[i*offset+j];
+        winy[j] = {hannWindow[j] * sample_value, 0.0};
       } else {
         winy[j] = {0.0, 0.0};
       }
     }
     // Perform fast fourier transform
-    auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
+    // auto fft_forward = ffts_init_1d(fftSize, FFTS_FORWARD);
     ffts_execute(fft_forward, winy.data(), ffty.data());
     // debug(ffty);
     // Extract phase, magnitude, and etc.
@@ -187,25 +181,22 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
       // Magnitude
       magy[j] = std::abs(ffty[j]);
       // Calculate a posteriori SNR
-      postsnr[j] = ((magy[j]*magy[j])/nsum[j])-1 ;
+      float postsnr = ((magy[j]*magy[j])/nsum[j])-1 ;
       // Limitation to prevent distorsion
-      if(postsnr[j]<0.1) postsnr[j] = 0.1;
+      if(postsnr<0.1) postsnr = 0.1;
 
       // Calculate a priori SNR using decision directed approach
-      eta[j] = alpha * ( (oldmag[j]*oldmag[j])/nsum[j] ) + (1-alpha) * postsnr[j];
-      newmag[j] = (eta[j]/(eta[j]+1)) * magy[j];
+      float eta = alpha * ( (oldmag[j]*oldmag[j])/nsum[j] ) + (1-alpha) * postsnr;
+      newmag[j] = (eta/(eta+1)) * magy[j];
 
       // Calculate TSNR
-      tsnr[j] = (newmag[j]*newmag[j]) / nsum[j];
+      float tsnr = (newmag[j]*newmag[j]) / nsum[j];
       // Gain of TSNR
-      Gtsnr[j] = tsnr[j] / (tsnr[j]+1);
+      Gtsnr[j] = tsnr / (tsnr+1);
     }
     // debug(phasey);
     // debug(magy);
-    // debug(postsnr);
-    // debug(eta);
     // debug(newmag);
-    // debug(tsnr);
     // debug(Gtsnr);
 
     // For HRNR use
@@ -214,7 +205,7 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
     tsnra[i] = Gtsnr;
 
     // Gtsnr=max(Gtsnr,0.1);  
-    gainControl(Gtsnr, frameLength);
+    gainControl(Gtsnr, frameLength, fft_forward, fft_backward);
     // debug(Gtsnr);
 
     for(int j=0; j<fftSize; j++ ) {
@@ -227,7 +218,7 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
     // For HRNR use
     newmags[i] = newmag;
 
-    auto fft_backward = ffts_init_1d(fftSize, FFTS_BACKWARD);
+    // auto fft_backward = ffts_init_1d(fftSize, FFTS_BACKWARD);
     ffts_execute(fft_backward, ffty.data(), out.data());
 
     for(int j=0; j<frameLength; j++) {
@@ -236,11 +227,13 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
     }
     // debug(news);
 
-    ffts_free(fft_forward);
-    ffts_free(fft_backward);
+    // ffts_free(fft_forward);
+    // ffts_free(fft_backward);
     // break;
   }
   // debug(news);
+  ffts_free(fft_forward);
+  ffts_free(fft_backward);
 
   return news; // noisySpeech;
 }
