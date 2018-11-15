@@ -7,6 +7,9 @@
 
 #include "denoise.h"
 
+// Reference:
+//   https://www.mathworks.com/matlabcentral/fileexchange/24462-wiener-filter-for-noise-reduction-and-speech-enhancement
+
 void debug(std::vector<float> data) {
   for(int i=0; i<20; i++) {
     printf("%.10f\n", data[i]);
@@ -237,10 +240,4 @@ std::vector<float> weinerDenoiseTSNR(const std::vector<float>& noisySpeech, int 
 
   return news; // noisySpeech;
 }
-
-std::vector<float> weinerDenoiseHRNR(const std::vector<float>& noisySpeech, int sampleRate, int nbInitialSilentFrames)
-{
-
-}
-
 
