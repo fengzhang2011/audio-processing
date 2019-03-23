@@ -201,12 +201,62 @@ void denoise_test(const char* fileName)
   audioFileOut.save("./clean.wav");
 }
 
-void resample_test(const char* filename)
+void resample_test(const char* fileName)
 {
-  SRC_DATA* data = (SRC_DATA*)malloc(sizeof(SRC_DATA));
+  // Read in the audio data
+  AudioFile<float> audioFile;
+  audioFile.load(fileName);
+  int sampleRate = audioFile.getSampleRate();
+
+  printf("Sample rate = %d\n", sampleRate);
+
+  std::vector<std::vector<float>> buffer = audioFile.samples;
+  if(buffer.size()==0) return;
+  // We only use the first channel
+  int samples = buffer[0].size();
+
+  // Preparing the input and output data
+  float* data_in = (float*)malloc(sizeof(float)*samples);
+  long input_frames = samples;
+  for(int i=0; i<input_frames; i++) {
+    data_in[i] = buffer[0][i];
+  }
+  double src_ratio = 1.0*16000/sampleRate;
+  long output_frames = (int)(samples*src_ratio);
+  float* data_out = (float*)malloc(sizeof(float)*output_frames);
+
+  // Resampling
+  SRC_DATA* src_data = (SRC_DATA*)malloc(sizeof(SRC_DATA));
+  if (!src_data) return;
+  src_data->data_in = data_in;
+  src_data->data_out = data_out;
+  src_data->input_frames = input_frames;
+  src_data->output_frames = output_frames;
+  src_data->src_ratio = src_ratio;
+
   int converter = SRC_SINC_FASTEST;
   int channels = 1;
-  src_simple(data, converter, channels);//  (SRC_DATA *data, int converter_type, int channels);
+  src_simple(src_data, converter, channels);//  (SRC_DATA *data, int converter_type, int channels);
+
+  printf("Resample: expected samples = %ld actual samples = %ld\n", output_frames, src_data->output_frames_gen);
+
+  // Write the resampled audio
+  std::vector<float> resampled;
+  for(int i=0; i<output_frames; i++) {
+    resampled.push_back(data_out[i]);
+  }
+  std::vector<std::vector<float>> resampledBuffer;
+  resampledBuffer.push_back(resampled);
+  AudioFile<float> audioFileOut;
+  audioFileOut.setAudioBuffer(resampledBuffer);
+  // audioFileOut.setAudioBuffer(buffer);
+  audioFileOut.setSampleRate(16000);
+  audioFileOut.setNumChannels(1);
+  audioFileOut.save("./resampled.wav");
+
+  free(src_data);
+  free(data_in);
+  free(data_out);
 }
 
 int main (int argc, char *argv[])
