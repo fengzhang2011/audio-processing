@@ -85,7 +85,7 @@ The detailed versions in use are as follows:
 5. MiniMp3@[7295650](https://github.com/lieff/minimp3/commit/7295650ab38760846505897bd85b150022b9c570) [Sep-26-2018]
 6. libsamplerate@[313685a](https://github.com/erikd/libsamplerate/commit/313685a7a94db5e8147c470ced811f03f3d2733c) [Mar-07-2019]
 
-## 3. COMPILE 3RD-PARTY LIBRARY
+## 3. 3RD-PARTY LIBRARIES
 
 ### 3.1 Supported Audio Format
 
@@ -124,6 +124,16 @@ MP3 decoder
 #### 3.2.1 Sample Rate Converter
 
 [libsamplerate](https://github.com/erikd/libsamplerate/commit/313685a7a94db5e8147c470ced811f03f3d2733c)
+
+```bash
+$ git clone https://github.com/anthonix/libsamplerate.git
+$ cd libsamplerate
+$ echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} -fPIC\")" >> CMakeLists.txt
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
 
 ### 3.3 FFT and MFCC
 

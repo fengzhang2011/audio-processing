@@ -22,7 +22,7 @@ void debug(std::vector<std::complex<float>> data) {
   }
 }
 
-void gainControl(std::vector<float>& gain, int constraintInLength, auto fft_forward, auto fft_backward)
+void gainControl(std::vector<float>& gain, int constraintInLength, ffts_plan_t* fft_forward, ffts_plan_t* fft_backward)
 {
   float fftSize = gain.size();
   float meanGain = 0.0;
