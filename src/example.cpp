@@ -27,6 +27,7 @@
 #include "amr.h"
 #include "minimp3.h"
 #include "denoise.h"
+#include "samplerate.h"
 
 
 
@@ -200,6 +201,14 @@ void denoise_test(const char* fileName)
   audioFileOut.save("./clean.wav");
 }
 
+void resample_test(const char* filename)
+{
+  SRC_DATA* data = (SRC_DATA*)malloc(sizeof(SRC_DATA));
+  int converter = SRC_SINC_FASTEST;
+  int channels = 1;
+  src_simple(data, converter, channels);//  (SRC_DATA *data, int converter_type, int channels);
+}
+
 int main (int argc, char *argv[])
 {
 
@@ -209,7 +218,9 @@ int main (int argc, char *argv[])
 
   // mp3_test("../wav/t2.mp3");
 
-  denoise_test("../wav/noisy.wav");
+  // denoise_test("../wav/noisy.wav");
+
+  resample_test("../wav/female.wav");
 
   return 0;
 
