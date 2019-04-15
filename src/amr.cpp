@@ -36,8 +36,8 @@
 #define AMRWB_OUT_MAX_SIZE  (61)
 #define AMR_OUT_MAX_SIZE (61)
 
-static const int amrnb_frame_sizes[] = {12, 13, 15, 17, 19, 20, 26, 31, 5, 0 };
-static const int amrwb_frame_sizes[] = {17, 23, 32, 36, 40, 46, 50, 58, 60, 5, 0 };
+static const int amrnb_frame_sizes[] = {12, 13, 15, 17, 19, 20, 26, 31,  5, 0, 0, 0, 0, 0, 0, 0 };
+static const int amrwb_frame_sizes[] = {17, 23, 32, 36, 40, 46, 50, 58, 60, 5, 0, 0, 0, 0, 0, 0 };
 
 static const int b_octet_align = 1;
 
@@ -68,7 +68,7 @@ int getSampleCount(char* data, int size, enum AMR_TYPE type)
 
 static int amrDecodeFrame(char *data, int nSize, short* pcmDataCurrentFrame, void* amrDecoder, enum AMR_TYPE type)
 {
-  if(nSize < 2) { printf("Too short packet\n"); return -1; }
+  if(nSize < 2) { printf("Too short packet\n"); return -1; } // it means that the framesize is 0, needs to abort.
 
   bs_t* payload = bs_new((uint8_t *)data, nSize);
   if(payload == NULL) { return -2; }
@@ -115,9 +115,11 @@ static int amrDecodeFrame(char *data, int nSize, short* pcmDataCurrentFrame, voi
 short* amrConvert(char* data, int size)
 {
   enum AMR_TYPE type = getAMRType(data, size);
+  if ( type == AMR_UNKNOWN ) return NULL;
 
   int samples = getSampleCount(data, size, type);
   short* pcmData = (short*) malloc( samples * sizeof(short) );
+  memset(pcmData, 0, samples * sizeof(short));
   short* pcmDataCurrentFrame = pcmData;
 
   void* amrDecoder = (type==AMR_NB) ? Decoder_Interface_init() : D_IF_init();
@@ -126,7 +128,8 @@ short* amrConvert(char* data, int size)
   while(i < size)
   {
     int frameBytes = getFrameBytesDirect(data + i, type);
-    amrDecodeFrame(data + i, frameBytes, pcmDataCurrentFrame, amrDecoder, type);
+    int rc = amrDecodeFrame(data + i, frameBytes, pcmDataCurrentFrame, amrDecoder, type);
+    if ( rc < 0 ) break; // there is something wrong with the data, needs to abort.
     i += frameBytes;
     pcmDataCurrentFrame += ( (type==AMR_NB) ? AMRNB_NUM_SAMPLES : AMRWB_NUM_SAMPLES );
   }

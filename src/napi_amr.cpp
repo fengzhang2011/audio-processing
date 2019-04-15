@@ -58,6 +58,7 @@ napi_value amr2pcm(napi_env env, napi_callback_info args)
   AMR_TYPE amr_type = getAMRType((char*)dataptr, length);
   int samples = getSampleCount((char*)dataptr, length, amr_type);
   short* pcm = amrConvert((char*)dataptr, length);
+  if (pcm == NULL) return nullptr;
 
   // Set the return value.
   size_t byte_length = samples*sizeof(float);
