@@ -18,6 +18,7 @@
 #include "napi_pitch.h"
 #include "napi_amr.h"
 #include "napi_mp3.h"
+#include "napi_resample.h"
 
 
 napi_value Method(napi_env env, napi_callback_info args) {
@@ -92,6 +93,12 @@ napi_value init(napi_env env, napi_value exports) {
   status = napi_create_function(env, nullptr, 0, mp32pcm, nullptr, &fn);
   if (status != napi_ok) return nullptr;
   status = napi_set_named_property(env, exports, "mp32pcm", fn);
+  if (status != napi_ok) return nullptr;
+
+  // 'Export' the 'resample' function.
+  status = napi_create_function(env, nullptr, 0, resample, nullptr, &fn);
+  if (status != napi_ok) return nullptr;
+  status = napi_set_named_property(env, exports, "resample", fn);
   if (status != napi_ok) return nullptr;
 
   return exports;

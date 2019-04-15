@@ -9,7 +9,8 @@
         "../lib/libffts.a",
         "../lib/libopencore-amrnb.a",
         "../lib/libopencore-amrwb.a",
-        "../lib/libaudiofile.a"
+        "../lib/libaudiofile.a",
+        "../lib/libsamplerate.a"
       ],
       "sources": [
         "src/napi_module.cpp",
@@ -23,7 +24,8 @@
         "src/amr.cpp",
         "src/minimp3.cpp",
         "src/napi_mp3.cpp",
-        "src/denoise.cpp"
+        "src/denoise.cpp",
+        "src/napi_resample.cpp"
       ],
       "include_dirs": [
         "./include"

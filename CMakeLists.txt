@@ -44,5 +44,11 @@ set_target_properties(opencore_amr_wb PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
 )
 
+# samplerate library
+add_library(samplerate STATIC IMPORTED)
+set_target_properties(samplerate PROPERTIES
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/libsamplerate.a"
+  INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
+)
 
-target_link_libraries(audio_processing audiofile pitch_detection ffts opencore_amr_nb opencore_amr_wb)
+target_link_libraries(audio_processing audiofile pitch_detection ffts opencore_amr_nb opencore_amr_wb samplerate)

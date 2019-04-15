@@ -46,6 +46,7 @@ async function test() {
   let mfcc_data = await ap.mfcc(audio2.wavdataL, audio2.samplerate, 40, 0, 3500, 25, 10, 0.97);
   // console.log(mfcc_data);
 
+  // Test the AMR
   var fs = require("fs");
   fs.readFile("./wav/sample.amr", async function (err, data) {
     if (err) throw err;
@@ -53,11 +54,20 @@ async function test() {
     ap.saveAudio('sample.wav', pcm_data.pcm, pcm_data.pcm, pcm_data.samplerate, pcm_data.bitdepth, 1);
   });
 
+  // Test the mp3
   fs.readFile("./wav/t2.mp3", async function (err, data) {
     if (err) throw err;
     let pcm_data = await ap.mp32pcm(data, data.length);
     ap.saveAudio('t2.wav', pcm_data.pcm, pcm_data.pcm, pcm_data.samplerate, pcm_data.bitdepth, 1);
   });
+
+  // Test the resampling
+  console.log('test the resampling');
+  let audio3 = await ap.readAudio('./wav/female.wav');
+  let resampled = await ap.resample(audio3.wavdataL, audio3.samplerate, 16000);
+  // console.log(resampled);
+  ap.saveAudio('resampled.wav', resampled.wavdata, resampled.wavdata, resampled.samplerate, resampled.bitdepth, 1);
+  // ap.saveAudio('resampled.wav', audio3.wavdataL, audio3.wavdataL, 16000, audio3.bitdepth, 1);
 
 }
 
