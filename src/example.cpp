@@ -155,7 +155,7 @@ void amr_test()
   fclose(fp);
 }
 
-void pcm2amr_test()
+void wav2amr_test()
 {
 //  char szInputFileName[] = "../wav/OSR_us_000_0010_8k.wav";
   char szInputFileName[] = "../wav/female.wav";
@@ -176,7 +176,44 @@ void pcm2amr_test()
   fclose(fp);
 
   int out_size = 0;
-  char* output = pcm2amr((short*)data, sz/2, 14700, &out_size);
+  char* output = wav2amr((short*)data, sz/2, 14700, &out_size, 7);
+  free(data);
+
+  FILE *fpo = NULL;
+  if (!(fpo = fopen(szOutputFileName, "wb"))) {
+    free(output);
+    return;
+  }
+
+  fwrite(output, sizeof(char), out_size, fpo);
+
+  free(output);
+
+  fclose(fpo);
+
+}
+
+void mp32amr_test()
+{
+  char szInputFileName[] = "../wav/t2.mp3";
+  char szOutputFileName[256] = {0};
+
+  strcpy(szOutputFileName, basename(szInputFileName));
+  strcat(szOutputFileName, ".amr");
+
+  FILE *fp = NULL;
+  if (!(fp = fopen(szInputFileName, "rb"))) return;
+
+  fseek(fp, 0L, SEEK_END);
+  int sz = ftell(fp);
+  printf("file size = %d\n", sz);
+  fseek(fp, 0L, SEEK_SET);
+  char* data = (char*)malloc(sz);
+  fread(data, (size_t)1, sz, fp);
+  fclose(fp);
+
+  int out_size = 0;
+  char* output = mp32amr((short*)data, sz/2, &out_size, 7);
   free(data);
 
   FILE *fpo = NULL;
@@ -199,12 +236,17 @@ void mp3_test(const char* fileName)
   mp3dec_t mp3d;
   mp3dec_file_info_t info;
   mp3dec_load(&mp3d, fileName, &info, 0, 0);
+  printf("mp3_test: samples = %d\n", info.samples);
+  printf("mp3_test: channels = %d\n", info.channels);
+  printf("mp3_test: hz = %d\n", info.hz);
+  printf("mp3_test: layer = %d\n", info.layer);
+  printf("mp3_test: avg_bitrate_kbps = %d\n", info.avg_bitrate_kbps);
   int samples = info.samples;
   if(samples == 0 ) return;
   short* pcm = info.buffer;
 
   int sampleRate = info.hz;
-  printf("Sample rate = %d\n", sampleRate);
+  printf("mp3_test: Sample rate = %d\n", sampleRate);
 }
 
 void denoise_test(const char* fileName)
@@ -308,9 +350,11 @@ int main (int argc, char *argv[])
 
   // denoise_test("../wav/noisy.wav");
 
-  resample_test("../wav/female.wav");
+//  resample_test("../wav/female.wav");
 
-  pcm2amr_test();
+  wav2amr_test();
+
+//  mp32amr_test();
 
   return 0;
 

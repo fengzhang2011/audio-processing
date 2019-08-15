@@ -32,6 +32,8 @@ enum AMR_TYPE getAMRType(char* data, int size);
 int getSampleCount(char* data, int size, enum AMR_TYPE type);
 
 short* amr2pcm(char* data, int size);
-char* pcm2amr(short* data, int size, int sampleRate, int* out_size);
+char* pcm2amr(short* data, int size, int sampleRate, int* out_size, int mode);
+char* wav2amr(short* data, int size, int sampleRate, int* out_size, int mode);
+char* mp32amr(short* data, int size, int* out_size, int mode);
 
 #endif // #ifndef _INCLUDE_AMR_H_

@@ -39,21 +39,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct { uint8_t* start; uint8_t* p; uint8_t* end; int bits_left; } bs_t;
+typedef struct { uint8_t* start; uint8_t* p; uint8_t* end; int bits_left; } hbs_t;
 
-static inline bs_t* bs_new(uint8_t* buf, size_t size) { bs_t* b = (bs_t*)malloc(sizeof(bs_t)); b->start = b->p = buf; b->end = buf + size; b->bits_left = 8; return b; }
-static inline void bs_free(bs_t* b) { free(b); }
-static inline int bs_eof(bs_t* b) { if (b->p >= b->end) { return 1; } else { return 0; } }
-static inline int bs_bytes_left(bs_t* b) { return (b->end - b->p); }
-static inline uint32_t bs_read_u1(bs_t* b) { uint32_t r = 0; b->bits_left--; if (! bs_eof(b)) { r = ((*(b->p)) >> b->bits_left) & 0x01; } if (b->bits_left == 0) { b->p ++; b->bits_left = 8; } return r; }
-static inline uint32_t bs_read_u(bs_t* b, int n) { uint32_t r = 0; for (int i = 0; i < n; i++) { r |= ( bs_read_u1(b) << ( n - i - 1 ) ); } return r; }
-static inline void bs_write_u(bs_t* b, int n, uint32_t v);
-static inline void bs_write_u1(bs_t* b, uint32_t v);
-static inline int bs_write_bytes(bs_t* b, uint8_t* buf, int len);
-static inline int bs_write_bytes_ex(bs_t* b, uint8_t* buf, int len);
+static inline hbs_t* bs_new(uint8_t* buf, size_t size) { hbs_t* b = (hbs_t*)malloc(sizeof(hbs_t)); b->start = b->p = buf; b->end = buf + size; b->bits_left = 8; return b; }
+static inline void bs_free(hbs_t* b) { free(b); }
+static inline int bs_eof(hbs_t* b) { if (b->p >= b->end) { return 1; } else { return 0; } }
+static inline int bs_bytes_left(hbs_t* b) { return (b->end - b->p); }
+static inline uint32_t bs_read_u1(hbs_t* b) { uint32_t r = 0; b->bits_left--; if (! bs_eof(b)) { r = ((*(b->p)) >> b->bits_left) & 0x01; } if (b->bits_left == 0) { b->p ++; b->bits_left = 8; } return r; }
+static inline uint32_t bs_read_u(hbs_t* b, int n) { uint32_t r = 0; for (int i = 0; i < n; i++) { r |= ( bs_read_u1(b) << ( n - i - 1 ) ); } return r; }
+static inline void bs_write_u(hbs_t* b, int n, uint32_t v);
+static inline void bs_write_u1(hbs_t* b, uint32_t v);
+static inline int bs_write_bytes(hbs_t* b, uint8_t* buf, int len);
+static inline int bs_write_bytes_ex(hbs_t* b, uint8_t* buf, int len);
 
 
-static inline int bs_read_bytes(bs_t* b, uint8_t* buf, int len)
+static inline int bs_read_bytes(hbs_t* b, uint8_t* buf, int len)
 {
   int actual_len = len;
   if (b->end - b->p < actual_len) { actual_len = b->end - b->p; }
@@ -64,7 +64,7 @@ static inline int bs_read_bytes(bs_t* b, uint8_t* buf, int len)
   return actual_len;
 }
 
-static inline int bs_read_bytes_ex(bs_t* b, uint8_t* buf, int len)
+static inline int bs_read_bytes_ex(hbs_t* b, uint8_t* buf, int len)
 {
   if(b->bits_left == 8) { return bs_read_bytes(b, buf, len); }
   
@@ -91,7 +91,7 @@ static inline int bs_read_bytes_ex(bs_t* b, uint8_t* buf, int len)
 }
 
 
-static inline void bs_write_u1(bs_t* b, uint32_t v)
+static inline void bs_write_u1(hbs_t* b, uint32_t v)
 {
     b->bits_left--;
 
@@ -107,7 +107,7 @@ static inline void bs_write_u1(bs_t* b, uint32_t v)
     if (b->bits_left == 0) { b->p ++; b->bits_left = 8; }
 }
 
-static inline void bs_write_u(bs_t* b, int n, uint32_t v)
+static inline void bs_write_u(hbs_t* b, int n, uint32_t v)
 {
     int i;
     for (i = 0; i < n; i++)
@@ -116,7 +116,7 @@ static inline void bs_write_u(bs_t* b, int n, uint32_t v)
     }
 }
 
-static inline int bs_write_bytes(bs_t* b, uint8_t* buf, int len)
+static inline int bs_write_bytes(hbs_t* b, uint8_t* buf, int len)
 {
     int actual_len = len;
     if (b->end - b->p < actual_len) { actual_len = b->end - b->p; }
@@ -127,7 +127,7 @@ static inline int bs_write_bytes(bs_t* b, uint8_t* buf, int len)
     return actual_len;
 }
 
-static inline int bs_write_bytes_ex(bs_t* b, uint8_t* buf, int len)
+static inline int bs_write_bytes_ex(hbs_t* b, uint8_t* buf, int len)
 {
     int i=0, mask = 0xFF, shift = 0;
     int value = 0, remain = 0;

@@ -27,6 +27,7 @@
 #include "bs.h"
 #include "amr.h"
 #include "samplerate.h"
+#include "minimp3.h"
 
 
 #define AMRNB_MAX_FRAME_TYPE  (8)    // SID Packet
@@ -71,7 +72,7 @@ static int amrDecodeFrame(char *data, int nSize, short* pcmDataCurrentFrame, voi
 {
   if(nSize < 2) { printf("Too short packet\n"); return -1; } // it means that the framesize is 0, needs to abort.
 
-  bs_t* payload = bs_new((uint8_t *)data, nSize);
+  hbs_t* payload = bs_new((uint8_t *)data, nSize);
   if(payload == NULL) { return -2; }
 
   int amrMaxFrameType = (type==AMR_NB) ? AMRNB_MAX_FRAME_TYPE : AMRWB_MAX_FRAME_TYPE;
@@ -142,150 +143,43 @@ short* amr2pcm(char* data, int size)
 }
 
 /* PCM to AMR NB */
-int amrNBEncodeFrame(short *pcmDataCurrentFrame, uint8_t* pOutput, void* amrEncoder, enum Mode amrMode)
-{
-  // Prepare the samples (input data)
-  short samples[sizeof(short) * AMRNB_NUM_SAMPLES];
-  memcpy((uint8_t*)samples, pcmDataCurrentFrame, sizeof(short) * AMRNB_NUM_SAMPLES);
-
-  // Create the output buffer and payload pointer
-  uint8_t output[AMR_OUT_MAX_SIZE + 1];
-  memset(output, 0, sizeof(output));
-  bs_t* payload = bs_new(output, AMR_OUT_MAX_SIZE + 1);
-
-  // Encode
-  uint8_t tmp[AMR_OUT_MAX_SIZE];
-  int ret = Encoder_Interface_Encode(amrEncoder, amrMode, samples, tmp, 0);
-  if (ret <= 0 || ret > 32){ printf("Encoder returned %i\n", ret); return 0; }
-
-  // Write TOC
-  int nFbit = 0;
-  bs_write_u(payload, 1, nFbit);
-
-  int nFTbits = tmp[0] >> 3 & 0x0F;
-  if(nFTbits > AMRNB_MAX_FRAME_TYPE){ printf("%s, Bad amr toc, index=%i (MAX=%d)\n", __func__, nFTbits, AMRNB_MAX_FRAME_TYPE); return 0; }
-	bs_write_u(payload, 4, nFTbits);
-
-  int nQbit = tmp[0] >> 2 & 0x01;
-	bs_write_u(payload, 1, nQbit);
-
-	if(b_octet_align == 1){	bs_write_u(payload, 2, 0); }// octet-align, add padding bit
-
-  // Frame
-  int framesz = amrnb_frame_sizes[nFTbits];
-  uint8_t	tmp1[20*AMR_OUT_MAX_SIZE];
-  memcpy(&tmp1[0], &tmp[1], framesz);
-  bs_write_bytes_ex(payload, tmp1, framesz);
-
-	int nOutputSize = 1 + framesz;
-	memcpy(pOutput, output, nOutputSize);
-
-	bs_free(payload);
-
-  return nOutputSize;
-}
-
-int amrNBEncodeFrame2(short *pcmDataCurrentFrame, uint8_t* pOutput, void* amrEncoder, enum Mode amrMode)
-{
-  // Prepare the samples (input data)
-  short samples[sizeof(short) * AMRNB_NUM_SAMPLES];
-  memcpy((uint8_t*)samples, pcmDataCurrentFrame, sizeof(short) * AMRNB_NUM_SAMPLES);
-
-  // Create the output buffer and payload pointer
-  uint8_t output[AMR_OUT_MAX_SIZE + 1];
-  memset(output, 0, sizeof(output));
-  bs_t* payload = bs_new(output, AMR_OUT_MAX_SIZE + 1);
-
-  // Encode
-  uint8_t tmp[AMR_OUT_MAX_SIZE];
-  int ret = Encoder_Interface_Encode(amrEncoder, amrMode, samples, tmp, 0);
-  if (ret <= 0 || ret > 32){ printf("Encoder returned %i\n", ret); return 0; }
-printf("ret = %d\n", ret);
-  // Write TOC
-  int nFbit = 0;
-  bs_write_u(payload, 1, nFbit);
-
-  int nFTbits = tmp[0] >> 3 & 0x0F;
-  if(nFTbits > AMRNB_MAX_FRAME_TYPE){ printf("%s, Bad amr toc, index=%i (MAX=%d)\n", __func__, nFTbits, AMRNB_MAX_FRAME_TYPE); return 0; }
-	bs_write_u(payload, 4, nFTbits);
-
-  int nQbit = tmp[0] >> 2 & 0x01;
-	bs_write_u(payload, 1, nQbit);
-
-	if(b_octet_align == 1){	bs_write_u(payload, 2, 0); }// octet-align, add padding bit
-
-  // Frame
-  int framesz = amrnb_frame_sizes[nFTbits];
-  uint8_t	tmp1[20*AMR_OUT_MAX_SIZE];
-  memcpy(&tmp1[0], &tmp[1], framesz);
-  bs_write_bytes_ex(payload, tmp1, framesz);
-
-	int nOutputSize = 1 + framesz;
-	memcpy(pOutput, output, nOutputSize);
-
-	bs_free(payload);
-
-  return nOutputSize;
-}
-
-int pcm2amr2(char* data, int size, char* pOutput, void* amrEncoder, enum Mode amrMode)
+int pcm2amr_execute(char* data, int size, char* pOutput, void* amrEncoder, enum Mode amrMode)
 {
 	int nRet = 0;
-	unsigned int unitary_buff_size = sizeof (int16_t) * AMRNB_NUM_SAMPLES;
-	unsigned int buff_size = unitary_buff_size;
+	int amrPTime = 20;
+	int amrDTX = 0;
+
+	unsigned int unitaryBuffSize = sizeof (int16_t) * AMRNB_NUM_SAMPLES;
+	unsigned int buffSize = unitaryBuffSize * amrPTime / 20;
+
+	int16_t samples[buffSize];
 	uint8_t tmp[AMR_OUT_MAX_SIZE];
-	int16_t samples[buff_size];
 	uint8_t	tmp1[20*AMR_OUT_MAX_SIZE];
-	bs_t	*payload = NULL;
-	int		nCmr = 0xF;
-	int		nFbit = 1, nFTbits = 0, nQbit = 0;
-	int		nReserved = 0, nPadding = 0;
-	int		nFrameData = 0, framesz = 0, nWrite = 0;
-	int		offset = 0;
-	int amrnb_dtx = 0;
 
-	uint8_t output[AMR_OUT_MAX_SIZE * buff_size / unitary_buff_size + 1];
-	int 	nOutputSize = 0;
-
-  int totalFrames = 0;
-  char* p2 = data;
-	while (size >= buff_size)
+  char* pData = data;
+	uint8_t output[AMR_OUT_MAX_SIZE * buffSize / unitaryBuffSize + 1];
+	while (size >= buffSize)
 	{
-	  printf("offset = %d\n", int(p2-data));
-		memset(output, 0, sizeof(output));
-		memcpy((uint8_t*)samples, p2, buff_size);
-		payload = bs_new(output, AMR_OUT_MAX_SIZE * buff_size / unitary_buff_size + 1);
+		memcpy((uint8_t*)samples, pData, buffSize);
 
-		nFrameData = 0; nWrite = 0;
-		for (offset = 0; offset < buff_size; offset += unitary_buff_size)
+    memset(output, 0, sizeof(output));
+	  hbs_t* payload = bs_new(output, AMR_OUT_MAX_SIZE * buffSize / unitaryBuffSize + 1);
+
+		int nFrameData = 0;
+  	int offset = 0;
+		for (offset = 0; offset < buffSize; offset += unitaryBuffSize)
 		{
-			int ret = Encoder_Interface_Encode(amrEncoder, amrMode, &samples[offset / sizeof (int16_t)], tmp, amrnb_dtx);
-			if (ret <= 0 || ret > 32)
-			{
-				printf("Encoder returned %i\n", ret);
-				continue;
-			}
-			if (nRet == 0) {
-					  char* p = (char*) tmp;
-            for(int i=0; i<ret; i++) {
-              if (i>0 && i%2==0) printf(" ");
-              printf("%02x", p[i] & 0xFF);
-            }
-            printf("\n");
-			}
+			int ret = Encoder_Interface_Encode(amrEncoder, amrMode, &samples[offset / sizeof (int16_t)], tmp, amrDTX);
+			if (ret <= 0 || ret > 32){ printf("Encoder returned %i\n", ret); continue; }
 
-			nFbit = tmp[0] >> 7;
-			nFbit = (offset+buff_size >= unitary_buff_size) ? 0 : 1;
-			nFTbits = tmp[0] >> 3 & 0x0F;
-			if(nFTbits > AMRNB_MAX_FRAME_TYPE)
-			{
-				printf("%s, Bad amr toc, index=%i (MAX=%d)\n", __func__, nFTbits, AMRNB_MAX_FRAME_TYPE);
-				break;
-			}
-			nQbit = tmp[0] >> 2 & 0x01;
-			framesz = amrnb_frame_sizes[nFTbits];
+			int nFbit = tmp[0] >> 7;
+			nFbit = (offset+buffSize >= unitaryBuffSize) ? 0 : 1;
+			int nFTbits = tmp[0] >> 3 & 0x0F;
+			if(nFTbits > AMRNB_MAX_FRAME_TYPE){ printf("%s, Bad amr toc, index=%i (MAX=%d)\n", __func__, nFTbits, AMRNB_MAX_FRAME_TYPE); break; }
+			int nQbit = tmp[0] >> 2 & 0x01;
 
-			// Frame 데이터를 임시로 복사
+			// Frame
+			int framesz = amrnb_frame_sizes[nFTbits];
 			memcpy(&tmp1[nFrameData], &tmp[1], framesz);
 			nFrameData += framesz;
 
@@ -293,69 +187,54 @@ int pcm2amr2(char* data, int size, char* pOutput, void* amrEncoder, enum Mode am
 			bs_write_u(payload, 1, nFbit);
 			bs_write_u(payload, 4, nFTbits);
 			bs_write_u(payload, 1, nQbit);
-			if(b_octet_align == 1)
-			{	// octet-align, add padding bit
-				bs_write_u(payload, 2, nPadding);
-			}
+			if(b_octet_align == 1) bs_write_u(payload, 2, 0); // octet-align, add padding bit
 
 		} // end of for
-		if(offset > 0)
-		{
-			nWrite = bs_write_bytes_ex(payload, tmp1, nFrameData);
-		}
+		if(offset > 0) bs_write_bytes_ex(payload, tmp1, nFrameData);
 
-		nOutputSize = 1 + framesz;
-		/* nRet = fwrite(output, (size_t)1, nOutputSize, fp); */
+		int nOutputSize = 1 + nFrameData;
 		memcpy(pOutput+nRet, output, nOutputSize);
-		if (nRet==0) {
-		  char* p = (char*) output;
-      for(int i=0; i<nOutputSize; i++) {
-        if (i>0 && i%2==0) printf(" ");
-        printf("%02x", p[i] & 0xFF);
-      }
-      printf("\n");
-		}
 		nRet += nOutputSize;
-//    printf("nRet == %d, size == %d\n", nRet, nOutputSize);
 
 		bs_free(payload);
-		size -= buff_size;
+		size -= buffSize;
 
-    p2 += buff_size;
-    totalFrames ++;
-
+    pData += buffSize;
 	} // end of while
-
-	printf("total frames=%d\n", totalFrames);
 
 	return nRet;
 }
 
 short* resampleTo8K(short* data, int size, int sampleRate, int* out_size)
 {
-  double src_ratio = 1.0*8000/sampleRate;
-  long output_frames = (int)(size*src_ratio);
   float* data_in = (float*)malloc(sizeof(float)*size);
   for(int i=0; i<size; i++) data_in[i] = data[i];
+
+  double src_ratio = 1.0*8000/sampleRate;
+  long output_frames = (int)(size*src_ratio);
+
   float* data_out = (float*)malloc(sizeof(float)*output_frames);
   short* out_data = (short*)malloc(sizeof(short)*output_frames);
+  *out_size = output_frames;
 
-  // Resampling
+  // Resampling preparation
   SRC_DATA* src_data = (SRC_DATA*)malloc(sizeof(SRC_DATA));
-  if (!src_data) return NULL;
+  if (!src_data) {
+    free(data_out);
+    free(out_data);
+    return NULL;
+  }
   src_data->data_in = data_in;
   src_data->data_out = data_out;
   src_data->input_frames = size;
   src_data->output_frames = output_frames;
   src_data->src_ratio = src_ratio;
 
-  int converter = SRC_SINC_FASTEST;
-  int channels = 1;
-  src_simple(src_data, converter, channels);//  (SRC_DATA *data, int converter_type, int channels);
-  *out_size = output_frames;
-  for(int i=0; i<output_frames; i++) {
-    out_data[i] = (short) data_out[i];
-  }
+  // Resample
+  src_simple(src_data, SRC_SINC_FASTEST, 1);//  (SRC_DATA *data, int converter_type, int channels);
+
+  // Copy the data back to 'short' type
+  for(int i=0; i<output_frames; i++) out_data[i] = (short) data_out[i];
 
   free(src_data);
   free(data_in);
@@ -364,47 +243,56 @@ short* resampleTo8K(short* data, int size, int sampleRate, int* out_size)
   return out_data;
 }
 
-char* pcm2amr(short* data, int size, int sampleRate, int* out_size)
-{
-  int new_size = size;
-  short* resampled = data;
+enum Mode getAMRMode(int amrMode) {
+  enum Mode mode = MR475;
+  switch(amrMode) {
+    case 0:
+      mode = MR475;
+      break;
+    case 1:
+      mode = MR515;
+      break;
+    case 2:
+      mode = MR59;
+      break;
+    case 3:
+      mode = MR67;
+      break;
+    case 4:
+      mode = MR74;
+      break;
+    case 5:
+      mode = MR795;
+      break;
+    case 6:
+      mode = MR102;
+      break;
+    case 7:
+      mode = MR122;
+      break;
+    default:
+      mode = MR122;
+      break;
+  }
+  return mode;
+}
 
-  if (sampleRate != 8000) resampled = resampleTo8K(data+44, size-44, sampleRate, &new_size);
-  printf("size=%d new_size=%d\n", size, new_size);
+char* pcm2amr(short* data, int size, int sampleRate, int* out_size, int amrMode)
+{
+  short* resampled = data;
+  int new_size = size;
+  if (sampleRate != 8000) resampled = resampleTo8K(data, size, sampleRate, &new_size);
+
   // amrnb_encode_init(nMode);
-  enum Mode amrMode = MR122;
   void* amrEncoder = Encoder_Interface_init(0);
   uint8_t* output = (uint8_t*) malloc(size*sizeof(short));
 
-  char* p = (char*) data;
-//  for(int i=44; i<204; i++) {
-//    if (i>0 && i%2==0) printf(" ");
-//    printf("%02x", p[i] & 0xFF);
-//  }
-//  printf("\n");
-
-  char* pcmCurrentFrame = (char*) data;
-  int offset_out = 0;
-	int nPcmSize = 320;
-//	while(pcmCurrentFrame < (char*)data + size)
-//	{
-//    offset_out += amrNBEncodeFrame2((short*)pcmCurrentFrame, output + offset_out, amrEncoder, amrMode);
-//    pcmCurrentFrame += nPcmSize;
-//	}
-  p = (char*) resampled;
-//  p = (char*) data;
-//  p += 44;
-  *out_size = pcm2amr2(p, 2*new_size, (char*)output, amrEncoder, amrMode);
-  printf("out_size=%d\n", *out_size);
+  *out_size = pcm2amr_execute((char*)resampled, 2*new_size, (char*)output, amrEncoder, getAMRMode(amrMode));
   *out_size += 6;
+  char header[6] = {'#', '!', 'A', 'M', 'R', '\n'};
   char* result = (char*) malloc(*out_size);
   memset(result, 0, *out_size);
-  result[0] = '#';
-  result[1] = '!';
-  result[2] = 'A';
-  result[3] = 'M';
-  result[4] = 'R';
-  result[5] = '\n';
+  memcpy(result, header, 6);
   memcpy(result+6, output, *out_size-6);
 
 	free(output);
@@ -416,3 +304,24 @@ char* pcm2amr(short* data, int size, int sampleRate, int* out_size)
 
   return result;
 }
+
+char* wav2amr(short* data, int size, int sampleRate, int* out_size, int mode)
+{
+  // Skip the WAVE header, which is 44-byte long.
+  return pcm2amr(data+44, size-44, sampleRate, out_size, mode);
+}
+
+char* mp32amr(short* data, int size, int* out_size, int mode)
+{
+  // Convert MP3 data
+  mp3dec_t mp3d;
+  mp3dec_file_info_t info;
+  mp3dec_load_buf(&mp3d, (uint8_t*)data, size*2, &info, 0, 0);
+  int samples = info.samples;
+  if(samples == 0 ) return NULL;
+  short* pcm = info.buffer;
+
+  return pcm2amr(info.buffer, info.samples, info.hz, out_size, mode);
+
+}
+
