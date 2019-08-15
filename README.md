@@ -6,6 +6,8 @@ For example, it can extract frequencies from the audio and compute the pitch.
 
 The source code can be found on [https://github.com/fengzhang2011/audio-processing](https://github.com/fengzhang2011/audio-processing).
 
+The npm package is on [https://www.npmjs.com/package/audio-processing](https://www.npmjs.com/package/audio-processing).
+
 ## 1. HOW TO USE
 
 ### 1.1 A simple test on the library
@@ -78,14 +80,16 @@ Thanks for their great work.
 
 The detailed versions in use are as follows:
 
-1. FFTS@[fe86885](https://github.com/anthonix/ffts/tree/fe86885ecafd0d16eb122f3212403d1d5a86e24e) [Jun-17-2017]
-2. Pitch-Detection@[7799a62](https://github.com/sevagh/pitch-detection/tree/7799a623c30ede739cb8d3c8fa3e0a9e5b200b58) [Oct-07-2018]
-3. AudioFile@[a6430a0](https://github.com/adamstark/AudioFile/tree/a6430a05c859e43f3379e0fe078ae4e094d71602) [Jun-06-2017]
-4. Opencore-AMR@[0.1.5](https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download) [Mar-16-2017]
-5. MiniMp3@[7295650](https://github.com/lieff/minimp3/commit/7295650ab38760846505897bd85b150022b9c570) [Sep-26-2018]
-6. libsamplerate@[313685a](https://github.com/erikd/libsamplerate/commit/313685a7a94db5e8147c470ced811f03f3d2733c) [Mar-07-2019]
+| # | Project | Version | Date |
+| ---| --- | --- | --- |
+| 1 | FFTS | [fe86885](https://github.com/anthonix/ffts/tree/fe86885ecafd0d16eb122f3212403d1d5a86e24e) | Jun-17-2017 |
+| 2 | Pitch-Detection | [7799a62](https://github.com/sevagh/pitch-detection/tree/7799a623c30ede739cb8d3c8fa3e0a9e5b200b58) | Oct-07-2018
+| 3 | AudioFile | [a6430a0](https://github.com/adamstark/AudioFile/tree/a6430a05c859e43f3379e0fe078ae4e094d71602) | Jun-06-2017
+| 4 | Opencore-AMR | [0.1.5](https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download) | Mar-16-2017
+| 5 | MiniMp3 | [7295650](https://github.com/lieff/minimp3/commit/7295650ab38760846505897bd85b150022b9c570) | Sep-26-2018
+| 6 | libsamplerate | [313685a](https://github.com/erikd/libsamplerate/commit/313685a7a94db5e8147c470ced811f03f3d2733c) | Mar-07-2019
 
-## 3. 3RD-PARTY LIBRARIES
+## 3. THIRD-PARTY LIBRARIES
 
 ### 3.1 Supported Audio Format
 
@@ -169,11 +173,9 @@ Copy the header file ```include/ffts.h``` and ```libffts.a``` to ```./include```
 
 The code are written based on these great documents. Thanks for the authors.
 
-[Mel Frequency Cepstral Coefficient (MFCC) tutorial. James Lyons. ](http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs)
-
-[Speech Processing for Machine Learning: Filter banks, Mel-Frequency Cepstral Coefficients (MFCCs) and What's In-Between. Haytham Fayek. ](https://haythamfayek.com/2016/04/21/speech-processing-for-machine-learning.html)
-
-[Hamming Window, SPECTRAL AUDIO SIGNAL PROCESSING. Julius Orion Smith III. ](https://ccrma.stanford.edu/~jos/sasp/Hamming_Window.html)
+- [1] [Mel Frequency Cepstral Coefficient (MFCC) tutorial. James Lyons. ](http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs)
+- [2] [Speech Processing for Machine Learning: Filter banks, Mel-Frequency Cepstral Coefficients (MFCCs) and What's In-Between. Haytham Fayek. ](https://haythamfayek.com/2016/04/21/speech-processing-for-machine-learning.html)
+- [3] [Hamming Window, SPECTRAL AUDIO SIGNAL PROCESSING. Julius Orion Smith III. ](https://ccrma.stanford.edu/~jos/sasp/Hamming_Window.html)
 
 ### 3.4 Audio features
 

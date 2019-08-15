@@ -57,7 +57,7 @@ napi_value amr2pcm(napi_env env, napi_callback_info args)
   // Convert AMR data
   AMR_TYPE amr_type = getAMRType((char*)dataptr, length);
   int samples = getSampleCount((char*)dataptr, length, amr_type);
-  short* pcm = amrConvert((char*)dataptr, length);
+  short* pcm = amr2pcm((char*)dataptr, length);
   if (pcm == NULL) return nullptr;
 
   // Set the return value.
@@ -103,3 +103,68 @@ napi_value amr2pcm(napi_env env, napi_callback_info args)
 
   return promise;
 }
+
+
+// Encode the PCM data to the AMR/NB/WB data.
+// pcmdata  (float32array)
+// return: arg[0]: amrdata  (uint8array)
+napi_value amr2pcm(napi_env env, napi_callback_info args)
+{
+  napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
+
+  napi_status status;
+
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
+  // Create the resulting object.
+  status = napi_create_object(env, &result);
+  if (status != napi_ok) return nullptr;
+
+  // Parse the input arguments.
+  size_t argc = 1;
+  napi_value argv[1];
+  status = napi_get_cb_info(env, args, &argc, argv, NULL, NULL);
+
+  // -- Get the data buffer.
+  uint8_t* dataptr;
+  napi_typedarray_type type;
+  size_t length;
+  napi_value arraybuffer;
+  size_t byte_offset;
+  status = napi_get_typedarray_info(env, argv[0], &type, &length, (void**) &dataptr, &arraybuffer, &byte_offset);
+  if (status != napi_ok) return nullptr;
+
+  // Convert PCM data
+  char* amr = pcm2amr((char*)dataptr, length);
+  if (amr == NULL) return nullptr;
+
+  // Set the return value.
+  size_t byte_length = sizeof(amr);
+  byte_offset = 0;
+  // -- First, create the ArrayBuffer.
+  float* amrdata = NULL;
+  status = napi_create_arraybuffer(env, byte_length, (void**)&amrdata, &arraybuffer);
+  if (status != napi_ok) return nullptr;
+  delete [] amr;
+  // -- Second, create the TypedArray.
+  napi_value amrarray;
+  status = napi_create_typedarray(env, napi_float32_array, byte_length, arraybuffer, byte_offset, &amrarray);
+  if (status != napi_ok) return nullptr;
+
+  // Set the named property.
+  status = napi_set_named_property(env, result, "data", pcmarray);
+  if (status != napi_ok) return nullptr;
+
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
+}
+

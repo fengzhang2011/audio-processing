@@ -148,11 +148,49 @@ void amr_test()
   char* data = (char*)malloc(sz);
   fread(data, (size_t)1, sz, fp);
 
-  short* output = amrConvert(data, sz);
+  short* output = amr2pcm(data, sz);
   free(output);
 
   free(data);
   fclose(fp);
+}
+
+void pcm2amr_test()
+{
+//  char szInputFileName[] = "../wav/OSR_us_000_0010_8k.wav";
+  char szInputFileName[] = "../wav/female.wav";
+  char szOutputFileName[256] = {0};
+
+  strcpy(szOutputFileName, basename(szInputFileName));
+  strcat(szOutputFileName, ".amr");
+
+  FILE *fp = NULL;
+  if (!(fp = fopen(szInputFileName, "rb"))) return;
+
+  fseek(fp, 0L, SEEK_END);
+  int sz = ftell(fp);
+  printf("file size = %d\n", sz);
+  fseek(fp, 0L, SEEK_SET);
+  char* data = (char*)malloc(sz);
+  fread(data, (size_t)1, sz, fp);
+  fclose(fp);
+
+  int out_size = 0;
+  char* output = pcm2amr((short*)data, sz/2, 14700, &out_size);
+  free(data);
+
+  FILE *fpo = NULL;
+  if (!(fpo = fopen(szOutputFileName, "wb"))) {
+    free(output);
+    return;
+  }
+
+  fwrite(output, sizeof(char), out_size, fpo);
+
+  free(output);
+
+  fclose(fpo);
+
 }
 
 void mp3_test(const char* fileName)
@@ -271,6 +309,8 @@ int main (int argc, char *argv[])
   // denoise_test("../wav/noisy.wav");
 
   resample_test("../wav/female.wav");
+
+  pcm2amr_test();
 
   return 0;
 

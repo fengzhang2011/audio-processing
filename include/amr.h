@@ -31,7 +31,7 @@ enum AMR_TYPE
 enum AMR_TYPE getAMRType(char* data, int size);
 int getSampleCount(char* data, int size, enum AMR_TYPE type);
 
-short* amrConvert(char* data, int size);
-
+short* amr2pcm(char* data, int size);
+char* pcm2amr(short* data, int size, int sampleRate, int* out_size);
 
 #endif // #ifndef _INCLUDE_AMR_H_
