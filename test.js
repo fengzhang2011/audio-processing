@@ -13,6 +13,8 @@
 // test.js
 const ap = require('./build/Release/feng_ap');
 
+const fs = require('fs');
+
 console.log(ap.hello());
 
 async function test() {
@@ -46,8 +48,16 @@ async function test() {
   let mfcc_data = await ap.mfcc(audio2.wavdataL, audio2.samplerate, 40, 0, 3500, 25, 10, 0.97);
   // console.log(mfcc_data);
 
+  // Test the PCM to AMR
+  console.log(audio2.wavdataL.length);
+  console.log(audio2.samplerate);
+  let encodedAMR_data = await ap.pcm2amr(audio2.wavdataL, audio2.samplerate, 7);
+  fs.writeFile('/tmp/output.amr', encodedAMR_data.data, (err) => {
+    if (err) return console.log(err);
+    console.log("The file was saved!");
+  });
+
   // Test the AMR
-  var fs = require("fs");
   fs.readFile("./wav/sample.amr", async function (err, data) {
     if (err) throw err;
     let pcm_data = await ap.amr2pcm(data, data.length);

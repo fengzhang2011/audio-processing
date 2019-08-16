@@ -17,5 +17,7 @@
 
 napi_value amr2pcm(napi_env env, napi_callback_info args);
 napi_value pcm2amr(napi_env env, napi_callback_info args);
+//napi_value wav2amr(napi_env env, napi_callback_info args);
+//napi_value mp32amr(napi_env env, napi_callback_info args);
 
 #endif // #ifndef _NAPI_AMR_INCLUDED_H_

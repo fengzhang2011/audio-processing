@@ -143,7 +143,7 @@ short* amr2pcm(char* data, int size)
 }
 
 /* PCM to AMR NB */
-int pcm2amr_execute(char* data, int size, char* pOutput, void* amrEncoder, enum Mode amrMode)
+int pcm2amr_execute(char* data, unsigned int size, char* pOutput, void* amrEncoder, enum Mode amrMode)
 {
 	int nRet = 0;
 	int amrPTime = 20;
@@ -152,21 +152,22 @@ int pcm2amr_execute(char* data, int size, char* pOutput, void* amrEncoder, enum 
 	unsigned int unitaryBuffSize = sizeof (int16_t) * AMRNB_NUM_SAMPLES;
 	unsigned int buffSize = unitaryBuffSize * amrPTime / 20;
 
-	int16_t samples[buffSize];
+	int16_t* samples = (int16_t*) malloc(buffSize*sizeof(int16_t));
 	uint8_t tmp[AMR_OUT_MAX_SIZE];
 	uint8_t	tmp1[20*AMR_OUT_MAX_SIZE];
 
   char* pData = data;
-	uint8_t output[AMR_OUT_MAX_SIZE * buffSize / unitaryBuffSize + 1];
+  int output_size = AMR_OUT_MAX_SIZE * buffSize / unitaryBuffSize + 1;
+	uint8_t* output = (uint8_t*) malloc(output_size);
 	while (size >= buffSize)
 	{
 		memcpy((uint8_t*)samples, pData, buffSize);
 
-    memset(output, 0, sizeof(output));
+    memset(output, 0, output_size);
 	  hbs_t* payload = bs_new(output, AMR_OUT_MAX_SIZE * buffSize / unitaryBuffSize + 1);
 
 		int nFrameData = 0;
-  	int offset = 0;
+  	unsigned int offset = 0;
 		for (offset = 0; offset < buffSize; offset += unitaryBuffSize)
 		{
 			int ret = Encoder_Interface_Encode(amrEncoder, amrMode, &samples[offset / sizeof (int16_t)], tmp, amrDTX);
@@ -201,6 +202,9 @@ int pcm2amr_execute(char* data, int size, char* pOutput, void* amrEncoder, enum 
 
     pData += buffSize;
 	} // end of while
+
+  free(output);
+  free(samples);
 
 	return nRet;
 }
@@ -319,7 +323,6 @@ char* mp32amr(short* data, int size, int* out_size, int mode)
   mp3dec_load_buf(&mp3d, (uint8_t*)data, size*2, &info, 0, 0);
   int samples = info.samples;
   if(samples == 0 ) return NULL;
-  short* pcm = info.buffer;
 
   return pcm2amr(info.buffer, info.samples, info.hz, out_size, mode);
 
