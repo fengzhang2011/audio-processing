@@ -142,7 +142,6 @@ napi_value pcm2amr(napi_env env, napi_callback_info args)
   if (status != napi_ok) return nullptr;
   // -- Save the wave data buffer. (Only accepts one channel).
   short* pcmData = new short[length]; // We only use the first channel or at most the first two channels.
-  char* p = (char*) pcmData;
   for (size_t i=0; i<length; i++) pcmData[i] = data[i]*32768;
 
   // -- Get the sample rate.
