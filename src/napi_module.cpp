@@ -95,6 +95,12 @@ napi_value init(napi_env env, napi_value exports) {
   status = napi_set_named_property(env, exports, "pcm2amr", fn);
   if (status != napi_ok) return nullptr;
 
+  // 'Export' the 'pcm2amr' function.
+  status = napi_create_function(env, nullptr, 0, wav2amr, nullptr, &fn);
+  if (status != napi_ok) return nullptr;
+  status = napi_set_named_property(env, exports, "wav2amr", fn);
+  if (status != napi_ok) return nullptr;
+
   // 'Export' the 'mp32pcm' function.
   status = napi_create_function(env, nullptr, 0, mp32pcm, nullptr, &fn);
   if (status != napi_ok) return nullptr;

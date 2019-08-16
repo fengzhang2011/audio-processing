@@ -176,7 +176,7 @@ void wav2amr_test()
   fclose(fp);
 
   int out_size = 0;
-  char* output = wav2amr((short*)data, sz/2, 14700, &out_size, 7);
+  char* output = wav2amr(data, sz, &out_size, 7);
   free(data);
 
   FILE *fpo = NULL;

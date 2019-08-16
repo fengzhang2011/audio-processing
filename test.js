@@ -57,6 +57,15 @@ async function test() {
     console.log("The file was saved!");
   });
 
+  // Test the WAV to AMR
+  fs.readFile("./wav/female.wav", async (err, data) => {
+    let amr_data = await ap.wav2amr(data, 7);
+    fs.writeFile('/tmp/female.from.wav.amr', amr_data.data, (err) => {
+      if (err) return console.log(err);
+      console.log("The file was saved!");
+    });
+  });
+
   // Test the AMR
   fs.readFile("./wav/sample.amr", async function (err, data) {
     if (err) throw err;

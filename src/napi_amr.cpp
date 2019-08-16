@@ -186,10 +186,78 @@ napi_value pcm2amr(napi_env env, napi_callback_info args)
   return promise;
 }
 
-//napi_value wav2amr(napi_env env, napi_callback_info args)
-//{
-//}
-//
+// Encode the PCM data from the WAVE buffer to the AMR/NB/WB data.
+// arg[0]: wavbuffer  (buffer)
+// arg[1]: mode: (0: 4.75k, 1: 5.15k, 2: 5.90k, 3: 6.70k, 4: 7.40k, 5: 7.95k, 6: 10.2k, 7: 12.2k)
+// return: arg[0]: amrdata  (uint8array)
+napi_value wav2amr(napi_env env, napi_callback_info args)
+{
+  napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
+
+  napi_status status;
+
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
+  // Create the resulting object.
+  status = napi_create_object(env, &result);
+  if (status != napi_ok) return nullptr;
+
+  // Parse the input arguments.
+  size_t argc = 2;
+  napi_value argv[2];
+  status = napi_get_cb_info(env, args, &argc, argv, NULL, NULL);
+
+  // -- Get the data buffer.
+  void* data;
+  size_t length;
+  status = napi_get_buffer_info(env, argv[0], &data, &length);
+  if (status != napi_ok) return nullptr;
+  // -- Save the wave data buffer. (Only accepts one channel).
+  char* wavData = new char[length];
+  memcpy(wavData, data, length);
+
+  // -- Get the AMR rate mode.
+  int32_t mode;
+  status = napi_get_value_int32(env, argv[1], &mode);
+  if (status != napi_ok) return nullptr;
+
+  // Convert PCM data
+  int byte_length = 0;
+  char* amr = wav2amr(wavData, length, &byte_length, mode);
+  if (amr == NULL) return nullptr;
+  delete []wavData;
+
+  // Set the return value.
+  size_t byte_offset = 0;
+  // -- First, create the ArrayBuffer.
+  napi_value arraybuffer;
+  uint8_t* amrdata = NULL;
+  status = napi_create_arraybuffer(env, byte_length, (void**)&amrdata, &arraybuffer);
+  if (status != napi_ok) return nullptr;
+  for (size_t i=0; i<(size_t)byte_length; i++) amrdata[i] = amr[i];
+  delete [] amr;
+  // -- Second, create the TypedArray.
+  napi_value amrarray;
+  status = napi_create_typedarray(env, napi_uint8_array, byte_length, arraybuffer, byte_offset, &amrarray);
+  if (status != napi_ok) return nullptr;
+
+  // Set the named property.
+  status = napi_set_named_property(env, result, "data", amrarray);
+  if (status != napi_ok) return nullptr;
+
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
+}
+
 //napi_value mp32amr(napi_env env, napi_callback_info args)
 //{
 //}

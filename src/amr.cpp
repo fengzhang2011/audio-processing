@@ -309,10 +309,15 @@ char* pcm2amr(short* data, int size, int sampleRate, int* out_size, int amrMode)
   return result;
 }
 
-char* wav2amr(short* data, int size, int sampleRate, int* out_size, int mode)
+char* wav2amr(char* data, int size, int* out_size, int mode)
 {
+  // Read the sampleRate
+  short* pValue = (short*) (data + 24);
+  int sampleRate = *pValue;
   // Skip the WAVE header, which is 44-byte long.
-  return pcm2amr(data+44, size-44, sampleRate, out_size, mode);
+  short* pPCMData = (short*) (data+44);
+  int nbSamples = (size-44)/2;
+  return pcm2amr(pPCMData, nbSamples, sampleRate, out_size, mode);
 }
 
 char* mp32amr(short* data, int size, int* out_size, int mode)
