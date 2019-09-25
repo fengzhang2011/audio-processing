@@ -307,22 +307,18 @@ napi_value amr_remove_silence(napi_env env, napi_callback_info args)
   amr_remove_silence((char*)dataptr, length, (float)threshold, &pOutput, &szOutput);
   if (szOutput == 0) return nullptr;
 
-  // Set the return value.
+  // Set the return value as Buffer.
+  napi_value buffer;
   size_t byte_length = szOutput;
   byte_offset = 0;
-  // -- First, create the ArrayBuffer.
   char* amrdata = NULL;
-  status = napi_create_arraybuffer(env, byte_length, (void**)&amrdata, &arraybuffer);
+  status = napi_create_buffer(env, byte_length, (void**)&amrdata, &buffer);
   if (status != napi_ok) return nullptr;
   memcpy(amrdata, pOutput, szOutput);
   delete [] pOutput;
-  // -- Second, create the TypedArray.
-  napi_value amrarray;
-  status = napi_create_typedarray(env, napi_uint8_array, szOutput, arraybuffer, byte_offset, &amrarray);
-  if (status != napi_ok) return nullptr;
 
   // Set the named property.
-  status = napi_set_named_property(env, result, "data", amrarray);
+  status = napi_set_named_property(env, result, "data", buffer);
   if (status != napi_ok) return nullptr;
 
   status = napi_resolve_deferred(env, deferred, result);

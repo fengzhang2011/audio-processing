@@ -1,6 +1,6 @@
 {
   "name": "audio-processing",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Audio processing, such as pitch detection, fft, mfcc and converting AMR NB/WB to Wave PCM data.",
   "main": "main.js",
   "directories": {
