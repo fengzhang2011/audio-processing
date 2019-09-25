@@ -4,10 +4,10 @@
  *
  * Author: Feng Zhang (zhjinf@gmail.com)
  * Date: 2018-10-20
- * 
+ *
  * Copyright:
  *   See LICENSE.
- * 
+ *
  ************************************************/
 
 #ifndef _INCLUDE_AMR_H_
@@ -35,5 +35,6 @@ short* amr2pcm(char* data, int size);
 char* pcm2amr(short* data, int size, int sampleRate, int* out_size, int mode);
 char* wav2amr(char* data, int size, int* out_size, int mode);
 char* mp32amr(short* data, int size, int* out_size, int mode);
+int amr_remove_silence(char* data, int size, float threshold, char** pOutput, int* szOutput);
 
 #endif // #ifndef _INCLUDE_AMR_H_

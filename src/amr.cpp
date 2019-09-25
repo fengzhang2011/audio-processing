@@ -4,7 +4,7 @@
  *
  * Author: Feng Zhang (zhjinf@gmail.com)
  * Date: 2018-10-20
- * 
+ *
  * Copyright:
  *   See LICENSE.
  *
@@ -140,6 +140,54 @@ short* amr2pcm(char* data, int size)
   amrDecoder = NULL;
 
   return pcmData;
+}
+
+int amr_remove_silence(char* data, int size, float threshold, char** pOutput, int* szOutput) {
+  enum AMR_TYPE type = getAMRType(data, size);
+  if ( type == AMR_UNKNOWN ) return -1;
+
+  int frameSamples = (type==AMR_NB) ? AMRNB_NUM_SAMPLES : AMRWB_NUM_SAMPLES;
+  short* pcmFrameData = (short*) malloc( frameSamples * sizeof(short) );
+  memset(pcmFrameData, 0, frameSamples * sizeof(short));
+
+  void* amrDecoder = (type==AMR_NB) ? Decoder_Interface_init() : D_IF_init();
+
+  // Find the first (start) and the last (end) frame.
+  int szHeader = (type==AMR_NB) ? strlen(AMRNB_HEADER) : strlen(AMRWB_HEADER);
+  int start = 0;
+  int end = 0;
+  int i = szHeader;
+  while(i < size)
+  {
+    int frameBytes = getFrameBytesDirect(data + i, type);
+    int rc = amrDecodeFrame(data + i, frameBytes, pcmFrameData, amrDecoder, type);
+    if ( rc < 0 ) break; // there is something wrong with the data, needs to abort.
+    float sum = 0.0;
+    for(int j=0; j<frameSamples; j++) {
+      float d = (int)pcmFrameData[j] / 32768.0;
+      sum += d * d;
+    }
+//    printf("%d: sum = %f\n", i, sum);
+    if (sum < threshold) {
+     if (end == 0) {
+       start = i;
+     }
+    } else {
+      end = i + frameBytes;
+    }
+    i += frameBytes;
+  }
+  int szAMRData = end - start;
+  *szOutput = szHeader + szAMRData;
+  *pOutput = (char*) malloc(*szOutput);
+  memcpy(*pOutput, data, szHeader);
+  memcpy(*pOutput + szHeader, data + start, szAMRData);
+//  printf("start = %d, end = %d\n", start, end);
+
+  (type==AMR_NB) ? Decoder_Interface_exit(amrDecoder) : D_IF_exit(amrDecoder);
+  amrDecoder = NULL;
+
+  return 0;
 }
 
 /* PCM to AMR NB */

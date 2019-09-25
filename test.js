@@ -80,6 +80,17 @@ async function test() {
     ap.saveAudio('t2.wav', pcm_data.pcm, pcm_data.pcm, pcm_data.samplerate, pcm_data.bitdepth, 1);
   });
 
+  // Test the removal of the silence frames from both the beginning and the end of the amr data
+  fs.readFile("./wav/pen_with_silence.amr", async function (err, data) {
+    if (err) throw err;
+    const amr = await ap.amr_remove_silence(data, 0.1);
+    await fs.writeFileSync('pen_with_silence.amr', amr.data);
+  });
+
+}
+
+test();
+
   // Test the resampling
   console.log('test the resampling');
   let audio3 = await ap.readAudio('./wav/female.wav');

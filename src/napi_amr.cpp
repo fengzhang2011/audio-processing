@@ -4,10 +4,10 @@
  *
  * Author: Feng Zhang (zhjinf@gmail.com)
  * Date: 2018-10-22
- * 
+ *
  * Copyright:
  *   See LICENSE.
- * 
+ *
  ************************************************/
 
 #include <vector>
@@ -261,3 +261,75 @@ napi_value wav2amr(napi_env env, napi_callback_info args)
 //napi_value mp32amr(napi_env env, napi_callback_info args)
 //{
 //}
+
+// Remove the silence frames from both the beginning and end in the AMR/NB/WB data.
+// arg[0]: amrdata  (uint8array)
+// arg[1]: threshold (float)
+// return: amrdata  (uint8array)
+napi_value amr_remove_silence(napi_env env, napi_callback_info args)
+{
+  napi_value result;
+  napi_deferred deferred;
+  napi_value promise;
+
+  napi_status status;
+
+  // Create the promise.
+  status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) { throwException(env, "Failed to create the promise object."); return nullptr; }
+
+  // Create the resulting object.
+  status = napi_create_object(env, &result);
+  if (status != napi_ok) return nullptr;
+
+  // Parse the input arguments.
+  size_t argc = 2;
+  napi_value argv[2];
+  status = napi_get_cb_info(env, args, &argc, argv, NULL, NULL);
+
+  // -- Get the data buffer.
+  uint8_t* dataptr;
+  napi_typedarray_type type;
+  size_t length;
+  napi_value arraybuffer;
+  size_t byte_offset;
+  status = napi_get_typedarray_info(env, argv[0], &type, &length, (void**) &dataptr, &arraybuffer, &byte_offset);
+  if (status != napi_ok) return nullptr;
+
+  // -- Get the threshold.
+  double threshold;
+  status = napi_get_value_double(env, argv[1], &threshold);
+  if (status != napi_ok) threshold = 0.1; // the default value
+
+  // Remove the silent frames from the AMR data.
+  char* pOutput = NULL;
+  int szOutput = 0;
+  amr_remove_silence((char*)dataptr, length, (float)threshold, &pOutput, &szOutput);
+  if (szOutput == 0) return nullptr;
+
+  // Set the return value.
+  size_t byte_length = szOutput;
+  byte_offset = 0;
+  // -- First, create the ArrayBuffer.
+  char* amrdata = NULL;
+  status = napi_create_arraybuffer(env, byte_length, (void**)&amrdata, &arraybuffer);
+  if (status != napi_ok) return nullptr;
+  memcpy(amrdata, pOutput, szOutput);
+  delete [] pOutput;
+  // -- Second, create the TypedArray.
+  napi_value amrarray;
+  status = napi_create_typedarray(env, napi_uint8_array, szOutput, arraybuffer, byte_offset, &amrarray);
+  if (status != napi_ok) return nullptr;
+
+  // Set the named property.
+  status = napi_set_named_property(env, result, "data", amrarray);
+  if (status != napi_ok) return nullptr;
+
+  status = napi_resolve_deferred(env, deferred, result);
+  if (status != napi_ok) { throwException(env, "Failed to set the deferred result."); return nullptr; }
+
+  // At this point the deferred has been freed, so we should assign NULL to it.
+  deferred = NULL;
+
+  return promise;
+}
