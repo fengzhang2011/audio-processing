@@ -50,7 +50,16 @@ static int tocListCheck(uint8_t *tl, size_t buflen) { size_t s = 1; while (tocGe
 static int getFrameType(char* data) { return ((*(int*) data) & 0x78) >> 3; }
 static int getFrameBytes(int frameType, enum AMR_TYPE type) { return (type==AMR_NB) ? amrnb_frame_sizes[frameType] + 1 : amrwb_frame_sizes[frameType] + 1; } // type == 0: AMR-NB,  type == 1: AMR-WB
 static int getFrameBytesDirect(char* data, enum AMR_TYPE type) { int frameType = getFrameType(data); return getFrameBytes(frameType, type); }
-static int getFrameCount(char* data, int size, enum AMR_TYPE type) { int count = 0; int i = (type==AMR_NB) ? strlen(AMRNB_HEADER): strlen(AMRWB_HEADER); while(i < size) { i += getFrameBytesDirect(data + i, type); count ++; } return count; }
+static int getFrameCount(char* data, int size, enum AMR_TYPE type) {
+  int count = 0;
+  int i = (type==AMR_NB) ? strlen(AMRNB_HEADER): strlen(AMRWB_HEADER);
+  while(i < size) {
+    i += getFrameBytesDirect(data + i, type);
+    if(i != size - 1) count ++; // TO AVOID THE CASE THAT THE TRAILING CHARACTER IS 0x0a, i.e., \n
+
+  }
+  return count;
+}
 
 
 enum AMR_TYPE getAMRType(char* data, int size)
@@ -133,6 +142,7 @@ short* amr2pcm(char* data, int size)
     int rc = amrDecodeFrame(data + i, frameBytes, pcmDataCurrentFrame, amrDecoder, type);
     if ( rc < 0 ) break; // there is something wrong with the data, needs to abort.
     i += frameBytes;
+    if (i == size - 1) break; // TO AVOID THE CASE THAT THE TRAILING CHARACTER IS 0x0a, i.e., \n
     pcmDataCurrentFrame += ( (type==AMR_NB) ? AMRNB_NUM_SAMPLES : AMRWB_NUM_SAMPLES );
   }
 
@@ -176,6 +186,7 @@ int amr_remove_silence(char* data, int size, float threshold, char** pOutput, in
       end = i + frameBytes;
     }
     i += frameBytes;
+    if (i == size - 1) break; // TO AVOID THE CASE THAT THE TRAILING CHARACTER IS 0x0a, i.e., \n
   }
   int szAMRData = end - start;
   *szOutput = szHeader + szAMRData;
